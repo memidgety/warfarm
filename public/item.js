@@ -17,7 +17,15 @@ function fill(id, rowsData, cells) {
   }
 }
 
-function renderRelic(rows) {
+function renderRelic(data) {
+  const rows = data.map((r) => ({
+    ...r,
+    expIntact: r.price == null || r.intact == null ? null : r.price * r.intact / 100,
+    expRadiant: r.price == null || r.radiant == null ? null : r.price * r.radiant / 100,
+  }));
+  const sum = (k) => rows.reduce((a, r) => a + (r[k] || 0), 0);
+  fill('relic-ev', [0], () => [+sum('expIntact').toFixed(2), +sum('expRadiant').toFixed(2)]);
+  document.querySelectorAll('#relic-ev td').forEach((td) => td.classList.add('plat'));
   const tb = document.getElementById('relic-rows');
   const heads = [...tb.closest('table').querySelectorAll('thead th')];
   let key = 'price';
@@ -52,9 +60,12 @@ function renderRelic(rows) {
       const f = (v) => (v == null ? '-' : v);
       cell(name);
       cell(r.rarity);
-      cell(r.price == null ? '-' : +r.price.toFixed(1), 'num');
+      const plat = (v, digits) => cell(v == null ? '-' : +v.toFixed(digits), v == null ? 'num' : 'num plat');
+      plat(r.price, 1);
       cell(f(r.intact), 'num');
       cell(f(r.radiant), 'num');
+      plat(r.expIntact, 2);
+      plat(r.expRadiant, 2);
       tb.appendChild(tr);
     }
   };

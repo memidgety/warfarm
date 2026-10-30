@@ -17,7 +17,7 @@ function el(tag, text, cls) {
 
 // Filtered rewards (below Min Plat) show their real price struck through.
 function priceCell(filtered, rawPrice, price) {
-  const td = el('td', undefined, 'num');
+  const td = el('td', undefined, (price === null || price === undefined) && !filtered ? 'num' : 'num plat');
   if (filtered) td.appendChild(el('s', fmt(rawPrice), 'filtered'));
   else td.textContent = fmt(price);
   return td;
@@ -129,7 +129,7 @@ function rewardTable(id, rows, { rotation = false, icon = false, nameLabel = 'Re
       tr.appendChild(nameCell(r, icon));
       tr.appendChild(el('td', `${r.chance.toFixed(2)}%`, 'num'));
       tr.appendChild(priceCell(r.filtered, r.rawPrice, r.price));
-      tr.appendChild(el('td', r.price === null ? '-' : expected(r).toFixed(2), 'num'));
+      tr.appendChild(el('td', r.price === null ? '-' : expected(r).toFixed(2), r.price === null ? 'num' : 'num plat'));
       body.appendChild(tr);
     });
   }
