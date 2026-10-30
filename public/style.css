@@ -11,6 +11,10 @@ th { position: sticky; top: 0; background: #1d2026; }
 .min-plat { margin-left: 1rem; }
 .min-plat input { width: 80px; }
 s.filtered { color: #8a8f98; }
+.item-thumb { display: inline-block; width: 32px; height: 32px; vertical-align: middle; margin-right: 8px; }
+.item-thumb img { width: 32px; height: 32px; object-fit: contain; margin: 0; }
+.icon-popup { position: fixed; z-index: 10; pointer-events: none; max-width: 512px; max-height: 512px; min-width: 128px; object-fit: contain; background: #1d2026; border: 1px solid #444; margin: 0; }
+.icon-popup[hidden] { display: none; }
 .clickable:hover { background: #1d2026; }
 details { border: 1px solid #2a2d33; border-radius: 4px; padding: 6px 10px; margin-bottom: 8px; }
 summary { cursor: pointer; font-weight: 600; }

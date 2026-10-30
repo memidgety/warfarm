@@ -153,6 +153,7 @@ async function loadItems() {
     slug: i.slug,
     name: i.i18n.en.name,
     thumb: i.i18n.en.thumb,
+    icon: i.i18n.en.icon,
     tags: i.tags || [],
     gameRef: i.gameRef,
   }));
@@ -186,7 +187,7 @@ async function crawl() {
   if (crawling) return;
   crawling = true;
   try {
-    if (!items.length) await loadItems();
+    if (!items.length || !items[0].icon) await loadItems();
     // Stalest first; never-fetched items go first.
     const queue = items
       .map((i) => i.slug)
@@ -266,7 +267,7 @@ function makeDropPricer(minPlat = 0) {
     const rawPrice = price;
     const filtered = price !== null && price < minPlat;
     if (filtered) price = 0;
-    const r = { slug: item ? item.slug : null, thumb: item ? item.thumb : null, price, rawPrice, filtered };
+    const r = { slug: item ? item.slug : null, thumb: item ? item.thumb : null, icon: item ? item.icon : null, price, rawPrice, filtered };
     memo.set(name, r);
     return r;
   };
@@ -297,7 +298,7 @@ function missionTypeTable(minPlat) {
     for (const [k, rows] of Object.entries(e.rotations)) {
       rewards[k] = rows.map(([name, chance]) => {
         const p = price(name);
-        return { name, slug: p.slug, chance, price: p.price ?? 0, rawPrice: p.rawPrice ?? 0, filtered: p.filtered };
+        return { name, slug: p.slug, thumb: p.thumb, icon: p.icon, chance, price: p.price ?? 0, rawPrice: p.rawPrice ?? 0, filtered: p.filtered };
       });
       rotationEv[k] = rewards[k].reduce((a, r) => a + (r.chance / 100) * r.price, 0);
     }
@@ -328,7 +329,7 @@ function missionPayouts(minPlat) {
       const rows = ((d && d.rotations[g.key]) || []).map(([name, chance]) => {
         const p = price(name);
         return {
-          name, slug: p.slug, thumb: p.thumb, chance, price: p.price,
+          name, slug: p.slug, thumb: p.thumb, icon: p.icon, chance, price: p.price,
           rawPrice: p.rawPrice, filtered: p.filtered,
           expected: p.price === null ? 0 : (chance / 100) * p.price,
         };

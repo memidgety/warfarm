@@ -28,8 +28,8 @@ const sortStates = new Map(); // table id -> {key, dir}; survives re-renders
 function nameCell(r, withIcon) {
   const name = el('td');
   if (withIcon && r.thumb) {
-    const icon = el('span', undefined, 'item-icon-preview');
-    const img = el('img', undefined, 'item-icon');
+    const icon = el('span', undefined, 'item-thumb');
+    const img = el('img');
     img.src = IMG + r.thumb;
     img.alt = '';
     icon.appendChild(img);
@@ -42,7 +42,38 @@ function nameCell(r, withIcon) {
   } else {
     name.appendChild(document.createTextNode(r.name));
   }
+  if (r.thumb) attachPreview(name, r);
   return name;
+}
+
+// Floating hover preview using the full-size icon (falls back to the thumbnail).
+const popup = el('img', undefined, 'icon-popup');
+popup.hidden = true;
+document.body.appendChild(popup);
+popup.addEventListener('error', () => {
+  if (popup.dataset.fallback && popup.src !== popup.dataset.fallback) popup.src = popup.dataset.fallback;
+});
+
+function placePopup(e) {
+  const gap = 16;
+  const w = popup.offsetWidth;
+  const h = popup.offsetHeight;
+  let x = e.clientX + gap;
+  if (x + w > window.innerWidth) x = Math.max(0, e.clientX - gap - w);
+  const y = Math.min(Math.max(0, e.clientY - h / 2), Math.max(0, window.innerHeight - h));
+  popup.style.left = `${x}px`;
+  popup.style.top = `${y}px`;
+}
+
+function attachPreview(target, r) {
+  target.addEventListener('mouseenter', (e) => {
+    popup.dataset.fallback = IMG + r.thumb;
+    popup.src = IMG + (r.icon || r.thumb);
+    popup.hidden = false;
+    placePopup(e);
+  });
+  target.addEventListener('mousemove', placePopup);
+  target.addEventListener('mouseleave', () => { popup.hidden = true; });
 }
 
 // Reward table with sortable Chance / Price / Expected headers.
@@ -180,9 +211,6 @@ function renderTypes() {
     const key = `${t.category}|${t.type}`;
     const tr = el('tr', undefined, 'clickable');
     tr.appendChild(el('td', `${expanded.has(key) ? '\u25BE' : '\u25B8'} ${t.type}`));
-    tr.appendChild(el('td', t.category));
-    tr.appendChild(el('td', String(t.nodeCount), 'num'));
-    tr.appendChild(el('td', t.basis, 'muted'));
     tr.appendChild(el('td', t.avg.toFixed(2), 'num'));
     tr.appendChild(el('td', t.nodeCount > 1 ? `${t.best.payout.toFixed(2)} (${t.best.name})` : t.best.payout.toFixed(2), 'num'));
     tr.addEventListener('click', () => {
@@ -193,7 +221,7 @@ function renderTypes() {
     if (expanded.has(key)) {
       const detail = el('tr');
       const td = el('td');
-      td.colSpan = 6;
+      td.colSpan = 3;
       td.appendChild(nodeTable(t));
       detail.appendChild(td);
       typeRows.appendChild(detail);
@@ -208,7 +236,7 @@ function renderTypes() {
 document.querySelectorAll('#types th.sortable').forEach((th) => {
   th.addEventListener('click', () => {
     if (sortKey === th.dataset.sort) sortDir = -sortDir;
-    else { sortKey = th.dataset.sort; sortDir = th.dataset.sort === 'type' || th.dataset.sort === 'category' ? 1 : -1; }
+    else { sortKey = th.dataset.sort; sortDir = th.dataset.sort === 'type' ? 1 : -1; }
     renderTypes();
   });
 });
