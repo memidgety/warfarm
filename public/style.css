@@ -4,8 +4,9 @@ table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
 th, td { padding: 4px 8px; border-bottom: 1px solid #2a2d33; text-align: left; }
 th { position: sticky; top: 0; background: #1d2026; }
 .num { text-align: right; }
+.plat { white-space: nowrap; }
 .plat::after { content: ""; display: inline-block; width: 1em; height: 1em; margin-left: 3px; vertical-align: -0.15em; background: url("/ui/plat.png") no-repeat center / contain; }
-.sortable { cursor: pointer; user-select: none; }
+.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
 .sortable:hover { color: #6cb8ff; }
 .muted { color: #8a8f98; margin-bottom: 6px; }
 .clickable { cursor: pointer; }

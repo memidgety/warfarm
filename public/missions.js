@@ -228,8 +228,9 @@ function renderTypes() {
     }
   });
   document.querySelectorAll('#types th.sortable').forEach((th) => {
-    th.textContent = th.textContent.replace(/ [▲▼]$/, '');
-    if (th.dataset.sort === sortKey) th.textContent += sortDir < 0 ? ' ▼' : ' ▲';
+    let arrow = th.querySelector('.arrow');
+    if (!arrow) { arrow = el('span', '', 'arrow'); th.appendChild(arrow); }
+    arrow.textContent = th.dataset.sort === sortKey ? (sortDir < 0 ? ' ▼' : ' ▲') : '';
   });
 }
 
