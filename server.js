@@ -15,7 +15,7 @@ const REQ_INTERVAL_MS = 400; // API limit is ~3 req/s
 const HIGH_VOLUME_REFRESH_MS = 2 * 60 * 60 * 1000;
 const LOW_VOLUME_REFRESH_MS = 24 * 60 * 60 * 1000;
 const HIGH_VOLUME_THRESHOLD = 30; // About the 75th percentile in the current cache.
-const CACHE_FILE = path.join(__dirname, 'cache.json');
+const CACHE_FILE = process.env.CACHE_FILE || path.join(__dirname, 'cache.json');
 const PUBLIC = path.join(__dirname, 'public');
 
 const DROP_TABLES_URL = 'https://warframe.com/droptables';
