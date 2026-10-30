@@ -1,8 +1,8 @@
 # WarFarmer
 
-WarFarmer is a Node.js web app that serves its pages and JSON API from one
-process. It fetches market and drop-table data from Warframe Market and the
-Warframe drop tables.
+Warframe mission farming assistant. WarFarmer is a Node.js web app that serves
+its pages and JSON API from one process. It fetches market and drop-table data
+from Warframe Market and the Warframe drop tables.
 
 ## Run locally
 
