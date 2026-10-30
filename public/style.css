@@ -1,0 +1,19 @@
+body { font-family: system-ui, sans-serif; background: #14161a; color: #ddd; max-width: 1000px; margin: 1rem auto; padding: 0 1rem; }
+a { color: #6cb8ff; }
+table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
+th, td { padding: 4px 8px; border-bottom: 1px solid #2a2d33; text-align: left; }
+th { position: sticky; top: 0; background: #1d2026; }
+.num { text-align: right; }
+.sortable { cursor: pointer; user-select: none; }
+.sortable:hover { color: #6cb8ff; }
+.muted { color: #8a8f98; margin-bottom: 6px; }
+.clickable { cursor: pointer; }
+.clickable:hover { background: #1d2026; }
+details { border: 1px solid #2a2d33; border-radius: 4px; padding: 6px 10px; margin-bottom: 8px; }
+summary { cursor: pointer; font-weight: 600; }
+img { vertical-align: middle; margin-right: 8px; }
+.item-icon-preview { position: relative; display: inline-block; width: 32px; height: 32px; vertical-align: middle; margin-right: 8px; }
+.item-icon-preview .item-icon { width: 32px; height: 32px; object-fit: contain; margin: 0; }
+.item-icon-preview .item-icon:hover { position: absolute; z-index: 1; top: 0; left: 0; width: auto; height: auto; max-width: 360px; max-height: 360px; background: #1d2026; border: 1px solid #444; scale: 1.5; }
+input { padding: 6px; width: 300px; margin: 8px 0; background: #1d2026; color: #ddd; border: 1px solid #333; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }

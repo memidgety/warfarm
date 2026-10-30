@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WarFarmer - Mission Types</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<p><a href="/">&larr; Market volume</a></p>
+<h1>Mission Types - Average Payout</h1>
+<div id="status"></div>
+
+<h2>All mission types</h2>
+<p class="muted">
+  Expected platinum value of the market-tradable drops (rank 0 prices; Endo, Credits and untradable items count as 0).
+  Click a row to see its individual nodes. Source: <a href="https://warframe.com/droptables">warframe.com/droptables</a>.
+</p>
+<input id="search" placeholder="Search mission types...">
+<table id="types">
+  <thead><tr>
+    <th class="sortable" data-sort="type">Mission type</th>
+    <th class="sortable" data-sort="category">Category</th>
+    <th class="num sortable" data-sort="nodeCount">Nodes</th>
+    <th>Payout basis</th>
+    <th class="num sortable" data-sort="avg">Avg payout (p)</th>
+    <th class="num sortable" data-sort="best">Best node (p)</th>
+  </tr></thead>
+  <tbody id="type-rows"></tbody>
+</table>
+
+<h2>Details</h2>
+<div id="missions"></div>
+<script src="/missions.js"></script>
+</body>
+</html>
