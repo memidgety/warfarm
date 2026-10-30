@@ -17,6 +17,55 @@ function fill(id, rowsData, cells) {
   }
 }
 
+function renderRelic(rows) {
+  const tb = document.getElementById('relic-rows');
+  const heads = [...tb.closest('table').querySelectorAll('thead th')];
+  let key = 'price';
+  let dir = -1;
+  const draw = () => {
+    heads.forEach((h) => {
+      h.textContent = h.textContent.replace(/ [▲▼]$/, '');
+      if (h.dataset.key === key) h.textContent += dir < 0 ? ' ▼' : ' ▲';
+    });
+    const sorted = rows.slice().sort((a, b) => {
+      const x = a[key], y = b[key];
+      if (x == null && y == null) return 0;
+      if (x == null) return 1;
+      if (y == null) return -1;
+      return (typeof x === 'string' ? x.localeCompare(y) : x - y) * dir;
+    });
+    tb.innerHTML = '';
+    for (const r of sorted) {
+      const tr = document.createElement('tr');
+      const cell = (content, cls) => {
+        const td = document.createElement('td');
+        if (cls) td.className = cls;
+        if (content instanceof Node) td.appendChild(content); else td.textContent = content;
+        tr.appendChild(td);
+      };
+      let name = r.name;
+      if (r.slug) {
+        name = document.createElement('a');
+        name.href = `/item?slug=${encodeURIComponent(r.slug)}`;
+        name.textContent = r.name;
+      }
+      const f = (v) => (v == null ? '-' : v);
+      cell(name);
+      cell(r.rarity);
+      cell(r.price == null ? '-' : +r.price.toFixed(1), 'num');
+      cell(f(r.intact), 'num');
+      cell(f(r.radiant), 'num');
+      tb.appendChild(tr);
+    }
+  };
+  heads.forEach((h) => h.addEventListener('click', () => {
+    if (key === h.dataset.key) dir = -dir;
+    else { key = h.dataset.key; dir = key === 'name' || key === 'rarity' ? 1 : -1; }
+    draw();
+  }));
+  draw();
+}
+
 (async () => {
   const res = await fetch(`/api/item/${encodeURIComponent(slug)}`);
   if (!res.ok) { document.getElementById('name').textContent = 'Item not found'; return; }
@@ -35,6 +84,10 @@ function fill(id, rowsData, cells) {
   const order = (o) => [o.platinum, o.quantity, o.rank ?? '-', `${o.user} (${o.status})`];
   fill('sell',   d.sell.slice(0, 5), order);
     fill('buy', d.buy.slice(0, 5), order);
+  if (d.relic) {
+    document.getElementById('relic').hidden = false;
+    renderRelic(d.relic);
+  }
   fill('hist', d.buckets.slice().reverse(), (b) =>
     [b.t.replace('T', ' ').slice(0, 16), b.rank ?? '-', b.volume, b.avg, b.min, b.max]);
 })();

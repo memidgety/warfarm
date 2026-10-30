@@ -128,17 +128,45 @@ function parseDropPage(html) {
   return entries;
 }
 
+// Relic tables: { "Axi A1": { Intact: [[item, chance, rarity]], Radiant: [...] } }
+function parseRelics(html) {
+  const start = html.indexOf('id="relicRewards"');
+  const end = html.indexOf('id="transientRewards"', start);
+  const relics = {};
+  if (start < 0) return relics;
+  const region = html.slice(start, end < 0 ? undefined : end);
+  for (const block of region.split('<tr class="blank-row">')) {
+    let key = null;
+    let refine = null;
+    const rows = [];
+    for (const row of block.matchAll(/<tr[^>]*>(.*?)<\/tr>/g)) {
+      const th = row[1].match(/<th[^>]*>([^<]*)<\/th>/);
+      if (th) {
+        const m = decodeHtml(th[1]).match(/^(.+) Relic \((\w+)\)$/);
+        if (m) { key = m[1]; refine = m[2]; }
+        continue;
+      }
+      const td = [...row[1].matchAll(/<td[^>]*>([^<]*)<\/td>/g)].map((x) => x[1]);
+      const m = td.length >= 2 && td[1].match(/^(\w+) \(([\d.]+)%\)/);
+      if (m) rows.push([decodeHtml(td[0]), parseFloat(m[2]), m[1]]);
+    }
+    if (key) (relics[key] = relics[key] || {})[refine] = rows;
+  }
+  return relics;
+}
+
 let dropsLoading = false;
 async function refreshDrops() {
   if (dropsLoading) return;
-  if (drops.entries && Date.now() - drops.fetchedAt <= DROPS_REFRESH_MS) return;
+  if (drops.entries && drops.relics && Date.now() - drops.fetchedAt <= DROPS_REFRESH_MS) return;
   dropsLoading = true;
   try {
     const res = await fetch(DROP_TABLES_URL, { headers: { 'User-Agent': HEADERS['User-Agent'] } });
     if (!res.ok) throw new Error(`drop tables -> ${res.status}`);
-    const entries = parseDropPage(await res.text());
+    const html = await res.text();
+    const entries = parseDropPage(html);
     if (!entries.length) throw new Error('no drop tables parsed');
-    drops = { fetchedAt: Date.now(), entries };
+    drops = { fetchedAt: Date.now(), entries, relics: parseRelics(html) };
     save();
   } catch (e) {
     console.error('drop refresh failed:', e.message);
@@ -363,8 +391,21 @@ async function itemDetail(slug) {
       user: o.user.ingameName, status: o.user.status,
     }));
   const d = (set && set.data) || {};
+  let relic = null;
+  const rel = (item.tags || []).includes('relic') && (drops.relics || {})[item.name.replace(/ Relic$/, '')];
+  if (rel) {
+    const price = makeDropPricer(0);
+    const names = new Map();
+    for (const rows of Object.values(rel)) for (const [n, , rarity] of rows) if (!names.has(n)) names.set(n, rarity);
+    relic = [...names].map(([name, rarity]) => {
+      const p = price(name);
+      const chance = (k) => ((rel[k] || []).find((r) => r[0] === name) || [])[1] ?? null;
+      return { name, rarity, slug: p.slug, price: p.price, intact: chance('Intact'), radiant: chance('Radiant') };
+    }).sort((a, b) => (b.price ?? -1) - (a.price ?? -1));
+  }
   return {
     item,
+    relic,
     description: d.i18n?.en?.description || null,
     wikiLink: d.i18n?.en?.wikiLink || null,
     rarity: d.rarity || null,

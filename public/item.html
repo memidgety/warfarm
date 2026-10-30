@@ -13,6 +13,13 @@
   <div><h2>Top 5 sell orders</h2><table><thead><tr><th class="num">Price</th><th class="num">Qty</th><th class="num">Rank</th><th>User</th></tr></thead><tbody id="sell"></tbody></table></div>
   <div><h2>Top 5 buy orders</h2><table><thead><tr><th class="num">Price</th><th class="num">Qty</th><th class="num">Rank</th><th>User</th></tr></thead><tbody id="buy"></tbody></table></div>
 </div>
+<div id="relic" hidden>
+  <h2>Relic drops</h2>
+  <table><thead><tr>
+    <th class="sortable" data-key="name">Item</th><th class="sortable" data-key="rarity">Rarity</th>
+    <th class="num sortable" data-key="price">Price (p)</th><th class="num sortable" data-key="intact">Intact %</th><th class="num sortable" data-key="radiant">Radiant %</th>
+  </tr></thead><tbody id="relic-rows"></tbody></table>
+</div>
 <h2>Hourly trade history (48h)</h2>
 <table><thead><tr><th>Hour (UTC)</th><th class="num">Rank</th><th class="num">Volume</th><th class="num">Avg</th><th class="num">Min</th><th class="num">Max</th></tr></thead><tbody id="hist"></tbody></table>
 <script src="/item.js"></script>
