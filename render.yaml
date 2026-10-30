@@ -3,7 +3,18 @@ services:
     name: warfarmer
     runtime: node
     plan: free
-    buildCommand: npm install
+    buildCommand: npm ci
     startCommand: npm start
-    healthCheckPath: /
+    healthCheckPath: /api/health
     autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_ENDPOINT_URL_S3
+        sync: false
+      - key: AWS_REGION
+        sync: false

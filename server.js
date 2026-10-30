@@ -1,9 +1,15 @@
-// Warframe.market reader: zero-dependency Node server.
-// Crawls per-item 48h statistics (no bulk endpoint exists) at a polite rate,
-// caches them on disk, and serves a small JSON API plus static pages.
+// Warframe.market reader: Node server with Neon-backed cache persistence.
+// Crawls per-item 48h statistics at a polite rate and serves API and static pages.
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+
+const envFile = ['.env.local', '.env']
+  .map((file) => path.join(__dirname, file))
+  .find((file) => fs.existsSync(file));
+if (envFile) require('dotenv').config({ path: envFile });
+
+const { closePersistence, initializeCache, verifyPersistence, writeCache } = require('./persistence');
 
 const PORT = process.env.PORT || 3000;
 const API = 'https://api.warframe.market';
@@ -25,12 +31,20 @@ let items = []; // {slug,name,thumb,tags,rarity}
 let stats = {}; // slug -> {fetchedAt, buckets:[{t,volume,avg,min,max,rank}]}
 let drops = {}; // {fetchedAt, entries:[{name,type,category,rotations:{A:[[item,chance]]}}]}
 
-try {
-  const c = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
-  items = c.items || [];
-  stats = c.stats || {};
-  drops = c.drops || {};
-} catch {}
+function readLocalCache() {
+  try {
+    return JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
+  } catch (error) {
+    if (error.code === 'ENOENT') return { items: [], stats: {}, drops: {} };
+    throw error;
+  }
+}
+
+function useCache(cache) {
+  items = cache.items;
+  stats = cache.stats;
+  drops = cache.drops;
+}
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let lastReq = 0;
@@ -48,8 +62,11 @@ async function wfm(url) {
   throw new Error(`${url} rate limited`);
 }
 
-function save() {
-  fs.writeFileSync(CACHE_FILE, JSON.stringify({ items, stats, drops }));
+async function save(snapshotObjectStorage = false) {
+  const cache = { items, stats, drops };
+  fs.mkdirSync(path.dirname(CACHE_FILE), { recursive: true });
+  fs.writeFileSync(CACHE_FILE, JSON.stringify(cache));
+  await writeCache(cache, snapshotObjectStorage);
 }
 
 // Mission types. Each group is one reward pool; a mission is a single weighted
@@ -167,7 +184,7 @@ async function refreshDrops() {
     const entries = parseDropPage(html);
     if (!entries.length) throw new Error('no drop tables parsed');
     drops = { fetchedAt: Date.now(), entries, relics: parseRelics(html) };
-    save();
+    await save(true);
   } catch (e) {
     console.error('drop refresh failed:', e.message);
   } finally {
@@ -231,9 +248,9 @@ async function crawl() {
     for (const slug of queue) {
       try { await refreshItem(slug); } catch (e) { console.error(e.message); }
       progress.done++;
-      if (progress.done % 50 === 0) save();
+      if (progress.done % 50 === 0) await save();
     }
-    save();
+    if (queue.length) await save(true);
   } catch (e) {
     console.error('crawl failed:', e.message);
   } finally {
@@ -423,9 +440,13 @@ const json = (res, code, body) => {
   res.end(JSON.stringify(body));
 };
 
-http.createServer(async (req, res) => {
+const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   try {
+    if (url.pathname === '/api/health') {
+      await verifyPersistence();
+      return json(res, 200, { ok: true, postgres: 'connected', objectStorage: 'connected' });
+    }
     if (url.pathname === '/api/items') {
       const rows = items
         .map((i) => ({ ...i, ...(summarize(i.slug, i.tags) || { volume: null, avg: null }) }))
@@ -452,9 +473,34 @@ http.createServer(async (req, res) => {
   } catch (e) {
     json(res, 500, { error: e.message });
   }
-}).listen(PORT, () => console.log(`http://localhost:${PORT}`));
+});
 
-crawl();
-setInterval(crawl, 15 * 60 * 1000);
-refreshDrops();
-setInterval(refreshDrops, 60 * 60 * 1000);
+async function start() {
+  useCache(await initializeCache(readLocalCache()));
+  fs.mkdirSync(path.dirname(CACHE_FILE), { recursive: true });
+  fs.writeFileSync(CACHE_FILE, JSON.stringify({ items, stats, drops }));
+  server.listen(PORT, () => console.log(`http://localhost:${PORT}`));
+  console.log('Persistent cache ready (Neon Postgres and Object Storage)');
+  crawl();
+  setInterval(crawl, 15 * 60 * 1000);
+  refreshDrops();
+  setInterval(refreshDrops, 60 * 60 * 1000);
+}
+
+start().catch((error) => {
+  console.error('startup failed:', error);
+  process.exitCode = 1;
+});
+
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, () => {
+    server.close(async () => {
+      try {
+        await closePersistence();
+      } catch (error) {
+        console.error('shutdown failed:', error);
+        process.exitCode = 1;
+      }
+    });
+  });
+}
