@@ -3,13 +3,16 @@ const slug = new URLSearchParams(location.search).get('slug');
 function fill(id, rowsData, cells) {
   const tb = document.getElementById(id);
   tb.innerHTML = '';
+  // Each cell takes the class (e.g. "num") of its column header so alignment matches.
+  const heads = [...tb.closest('table').querySelectorAll('thead th')];
   for (const r of rowsData) {
     const tr = document.createElement('tr');
-    for (const c of cells(r)) {
+    cells(r).forEach((c, i) => {
       const td = document.createElement('td');
       td.textContent = c;
+      if (heads[i] && heads[i].className) td.className = heads[i].className;
       tr.appendChild(td);
-    }
+    });
     tb.appendChild(tr);
   }
 }
