@@ -33,8 +33,8 @@ function fill(id, rowsData, cells) {
   meta.appendChild(link);
 
   const order = (o) => [o.platinum, o.quantity, o.rank ?? '-', `${o.user} (${o.status})`];
-  fill('sell', d.sell.slice(0, 20), order);
-  fill('buy', d.buy.slice(0, 20), order);
+  fill('sell',   d.sell.slice(0, 5), order);
+    fill('buy', d.buy.slice(0, 5), order);
   fill('hist', d.buckets.slice().reverse(), (b) =>
     [b.t.replace('T', ' ').slice(0, 16), b.rank ?? '-', b.volume, b.avg, b.min, b.max]);
 })();
