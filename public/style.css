@@ -8,6 +8,9 @@ th { position: sticky; top: 0; background: #1d2026; }
 .sortable:hover { color: #6cb8ff; }
 .muted { color: #8a8f98; margin-bottom: 6px; }
 .clickable { cursor: pointer; }
+.min-plat { margin-left: 1rem; }
+.min-plat input { width: 80px; }
+s.filtered { color: #8a8f98; }
 .clickable:hover { background: #1d2026; }
 details { border: 1px solid #2a2d33; border-radius: 4px; padding: 6px 10px; margin-bottom: 8px; }
 summary { cursor: pointer; font-weight: 600; }

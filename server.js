@@ -253,7 +253,8 @@ function rankZeroPrice(slug) {
 
 // Market value of a drop table item name (rank 0 price x quantity), or null if
 // it isn't tradable (Endo, Credits, most resources, ...).
-function makeDropPricer() {
+// Rewards priced below minPlat are treated as worth 0.
+function makeDropPricer(minPlat = 0) {
   const byName = new Map(items.map((i) => [i.name.toLowerCase(), i]));
   const memo = new Map();
   return (name) => {
@@ -261,10 +262,11 @@ function makeDropPricer() {
     const q = name.match(/^([\d,]+)X (.+)$/);
     const item = byName.get((q ? q[2] : name).toLowerCase());
     const unit = item ? rankZeroPrice(item.slug) : null;
-    const r = {
-      slug: item ? item.slug : null, thumb: item ? item.thumb : null,
-      price: unit === null ? null : unit * (q ? parseInt(q[1].replace(/,/g, ''), 10) : 1),
-    };
+    let price = unit === null ? null : unit * (q ? parseInt(q[1].replace(/,/g, ''), 10) : 1);
+    const rawPrice = price;
+    const filtered = price !== null && price < minPlat;
+    if (filtered) price = 0;
+    const r = { slug: item ? item.slug : null, thumb: item ? item.thumb : null, price, rawPrice, filtered };
     memo.set(name, r);
     return r;
   };
@@ -286,8 +288,8 @@ function nodePayout(type, rotationEv) {
   return { payout: sum, basis: 'Sum of rotations' };
 }
 
-function missionTypeTable() {
-  const price = makeDropPricer();
+function missionTypeTable(minPlat) {
+  const price = makeDropPricer(minPlat);
   const groups = new Map();
   for (const e of drops.entries || []) {
     const rotationEv = {};
@@ -295,7 +297,7 @@ function missionTypeTable() {
     for (const [k, rows] of Object.entries(e.rotations)) {
       rewards[k] = rows.map(([name, chance]) => {
         const p = price(name);
-        return { name, slug: p.slug, chance, price: p.price ?? 0 };
+        return { name, slug: p.slug, chance, price: p.price ?? 0, rawPrice: p.rawPrice ?? 0, filtered: p.filtered };
       });
       rotationEv[k] = rewards[k].reduce((a, r) => a + (r.chance / 100) * r.price, 0);
     }
@@ -318,8 +320,8 @@ function missionTypeTable() {
   }).sort((a, b) => b.avg - a.avg);
 }
 
-function missionPayouts() {
-  const price = makeDropPricer();
+function missionPayouts(minPlat) {
+  const price = makeDropPricer(minPlat);
   return MISSION_TYPES.map((t) => {
     const d = (drops.entries || []).find((e) => e.name === t.dropName);
     const groups = t.groups.map((g) => {
@@ -327,6 +329,7 @@ function missionPayouts() {
         const p = price(name);
         return {
           name, slug: p.slug, thumb: p.thumb, chance, price: p.price,
+          rawPrice: p.rawPrice, filtered: p.filtered,
           expected: p.price === null ? 0 : (chance / 100) * p.price,
         };
       }).sort((a, b) => b.expected - a.expected);
@@ -388,7 +391,10 @@ http.createServer(async (req, res) => {
       rows.sort((a, b) => b.volume - a.volume);
       return json(res, 200, { progress, crawling, totalItems: items.length, items: rows });
     }
-    if (url.pathname === '/api/missions') return json(res, 200, { missions: missionPayouts(), types: missionTypeTable(), dropsFetchedAt: drops.fetchedAt || null });
+    if (url.pathname === '/api/missions') {
+      const minPlat = Math.max(0, parseFloat(url.searchParams.get('min')) || 0);
+      return json(res, 200, { missions: missionPayouts(minPlat), types: missionTypeTable(minPlat), dropsFetchedAt: drops.fetchedAt || null });
+    }
     const m = url.pathname.match(/^\/api\/item\/([\w-]+)$/);
     if (m) {
       const d = await itemDetail(m[1]);
