@@ -187,9 +187,14 @@ const typeValue = (t, key) => (key === 'best' ? t.best.payout : t[key]);
 
 function nodeTable(t) {
   const wrap = el('div');
+  if (t.nodes.length === 1) {
+    const n = t.nodes[0];
+    const rows = Object.keys(n.rewards).sort().flatMap((rot) => n.rewards[rot].map((r) => ({ ...r, rot })));
+    wrap.appendChild(rewardTable(`node|${t.category}|${t.type}|${n.name}`, rows, { rotation: true }));
+    return wrap;
+  }
   t.nodes.forEach((n) => {
     const d = el('details');
-    d.open = t.nodes.length === 1;
     d.appendChild(el('summary', `${n.name} - ${n.payout.toFixed(2)}p (${n.basis})`));
     const rows = Object.keys(n.rewards).sort().flatMap((rot) => n.rewards[rot].map((r) => ({ ...r, rot })));
     d.appendChild(rewardTable(`node|${t.category}|${t.type}|${n.name}`, rows, { rotation: true }));
