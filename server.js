@@ -7,9 +7,12 @@ const path = require('path');
 const envFile = ['.env.local', '.env']
   .map((file) => path.join(__dirname, file))
   .find((file) => fs.existsSync(file));
-if (envFile) require('dotenv').config({ path: envFile });
+if (envFile && require.main === module) require('dotenv').config({ path: envFile });
 
-const { closePersistence, initializeCache, verifyPersistence, writeCache } = require('./persistence');
+// Persistence needs Neon credentials, so it is only loaded when running as the server.
+let closePersistence = async () => {};
+let verifyPersistence = async () => {};
+let writeCache = async () => {};
 
 const PORT = process.env.PORT || 3000;
 const API = 'https://api.warframe.market';
@@ -434,6 +437,14 @@ async function itemDetail(slug) {
   };
 }
 
+function itemRows() {
+  const rows = items
+    .map((i) => ({ ...i, ...(summarize(i.slug, i.tags) || { volume: null, avg: null }) }))
+    .filter((r) => r.volume !== null);
+  rows.sort((a, b) => b.volume - a.volume);
+  return rows;
+}
+
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png' };
 const json = (res, code, body) => {
   res.writeHead(code, { 'Content-Type': 'application/json' });
@@ -448,11 +459,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true, postgres: 'connected', objectStorage: 'connected' });
     }
     if (url.pathname === '/api/items') {
-      const rows = items
-        .map((i) => ({ ...i, ...(summarize(i.slug, i.tags) || { volume: null, avg: null }) }))
-        .filter((r) => r.volume !== null);
-      rows.sort((a, b) => b.volume - a.volume);
-      return json(res, 200, { progress, crawling, totalItems: items.length, items: rows });
+      return json(res, 200, { progress, crawling, totalItems: items.length, items: itemRows() });
     }
     if (url.pathname === '/api/missions') {
       const minPlat = Math.max(0, parseFloat(url.searchParams.get('min')) || 0);
@@ -476,6 +483,9 @@ const server = http.createServer(async (req, res) => {
 });
 
 async function start() {
+  const persistence = require('./persistence');
+  ({ closePersistence, verifyPersistence, writeCache } = persistence);
+  const { initializeCache } = persistence;
   useCache(await initializeCache(readLocalCache()));
   fs.mkdirSync(path.dirname(CACHE_FILE), { recursive: true });
   fs.writeFileSync(CACHE_FILE, JSON.stringify({ items, stats, drops }));
@@ -487,20 +497,32 @@ async function start() {
   setInterval(refreshDrops, 60 * 60 * 1000);
 }
 
-start().catch((error) => {
-  console.error('startup failed:', error);
-  process.exitCode = 1;
-});
-
-for (const signal of ['SIGINT', 'SIGTERM']) {
-  process.on(signal, () => {
-    server.close(async () => {
-      try {
-        await closePersistence();
-      } catch (error) {
-        console.error('shutdown failed:', error);
-        process.exitCode = 1;
-      }
-    });
+if (require.main === module) {
+  start().catch((error) => {
+    console.error('startup failed:', error);
+    process.exitCode = 1;
   });
+
+  for (const signal of ['SIGINT', 'SIGTERM']) {
+    process.on(signal, () => {
+      server.close(async () => {
+        try {
+          await closePersistence();
+        } catch (error) {
+          console.error('shutdown failed:', error);
+          process.exitCode = 1;
+        }
+      });
+    });
+  }
 }
+
+module.exports = {
+  useCache,
+  crawl,
+  refreshDrops,
+  itemRows,
+  missionTypeTable,
+  missionPayouts,
+  getCache: () => ({ items, stats, drops }),
+};

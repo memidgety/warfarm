@@ -36,3 +36,8 @@ service uses the pooled `DATABASE_URL` for runtime queries; do not commit
 The free Render service uses ephemeral storage and may spin down when idle. Its
 local cache file can be lost on restart, but it is rehydrated from Neon Postgres
 and Object Storage. The app checks both services at `/api/health`.
+
+## Static data publishing (S3 + CloudFront)
+
+.github/workflows/publish-cache.yml runs scripts/publish-cache.js every 3 hours. It crawls incrementally and uploads cache.json, items.json and missions.json to the private S3 bucket warfarmer-cache. CloudFront serves them at https://d12aw56padv05r.cloudfront.net with CORS enabled. Add AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (the warfarmer-cache-writer IAM user) as GitHub Actions secrets.
+
