@@ -302,8 +302,8 @@ function rankZeroPrice(slug) {
 
 // Market value of a drop table item name (rank 0 price x quantity), or null if
 // it isn't tradable (Endo, Credits, most resources, ...).
-// Rewards priced below minPlat are treated as worth 0.
-function makeDropPricer(minPlat = 0) {
+// The Min Plat filter is applied in the browser (public/missions.js).
+function makeDropPricer() {
   const byName = new Map(items.map((i) => [i.name.toLowerCase(), i]));
   const memo = new Map();
   return (name) => {
@@ -311,11 +311,8 @@ function makeDropPricer(minPlat = 0) {
     const q = name.match(/^([\d,]+)X (.+)$/);
     const item = byName.get((q ? q[2] : name).toLowerCase());
     const unit = item ? rankZeroPrice(item.slug) : null;
-    let price = unit === null ? null : unit * (q ? parseInt(q[1].replace(/,/g, ''), 10) : 1);
-    const rawPrice = price;
-    const filtered = price !== null && price < minPlat;
-    if (filtered) price = 0;
-    const r = { slug: item ? item.slug : null, thumb: item ? item.thumb : null, icon: item ? item.icon : null, price, rawPrice, filtered };
+    const price = unit === null ? null : unit * (q ? parseInt(q[1].replace(/,/g, ''), 10) : 1);
+    const r = { slug: item ? item.slug : null, thumb: item ? item.thumb : null, icon: item ? item.icon : null, price };
     memo.set(name, r);
     return r;
   };
@@ -324,21 +321,27 @@ function makeDropPricer(minPlat = 0) {
 // How many reward rolls a node pays and from which rotation (see wiki Mission Rewards):
 // endless missions cycle A,A,B,C; Spy vaults and Caches pay A then B then C;
 // Rescue pays the pool for objectives completed (best = C).
+// weights[rotation] multiplies that rotation's expected value; the browser reuses them
+// to recompute payouts when Min Plat changes.
 function nodePayout(type, rotationEv) {
   const keys = Object.keys(rotationEv).sort();
-  const sum = keys.reduce((a, k) => a + rotationEv[k], 0);
-  if (type === 'Nightmare Mode Rewards') return { payout: sum / keys.length, basis: 'Mean of the A/B/C pools (depends on planet)' };
-  if (type === 'Spy' || type === 'Caches') return { payout: sum, basis: 'All rotations (one reward each)' };
-  if (type === 'Rescue') return { payout: rotationEv[keys[keys.length - 1]], basis: 'All objectives (highest rotation)' };
+  const weigh = (basis, fn) => {
+    const weights = {};
+    keys.forEach((k) => { weights[k] = fn(k); });
+    return { payout: keys.reduce((a, k) => a + weights[k] * rotationEv[k], 0), basis, weights };
+  };
+  if (type === 'Nightmare Mode Rewards') return weigh('Mean of the A/B/C pools (depends on planet)', () => 1 / keys.length);
+  if (type === 'Spy' || type === 'Caches') return weigh('All rotations (one reward each)', () => 1);
+  if (type === 'Rescue') return weigh('All objectives (highest rotation)', (k) => (k === keys[keys.length - 1] ? 1 : 0));
   if (['A', 'B', 'C'].every((k) => k in rotationEv)) {
-    return { payout: (2 * rotationEv.A + rotationEv.B + rotationEv.C) / 4, basis: 'Per reward, AABC cycle' };
+    return weigh('Per reward, AABC cycle', (k) => ({ A: 0.5, B: 0.25, C: 0.25 }[k] ?? 0));
   }
-  if (keys.length === 1) return { payout: sum, basis: 'Single reward' };
-  return { payout: sum, basis: 'Sum of rotations' };
+  if (keys.length === 1) return weigh('Single reward', () => 1);
+  return weigh('Sum of rotations', () => 1);
 }
 
-function missionTypeTable(minPlat) {
-  const price = makeDropPricer(minPlat);
+function missionTypeTable() {
+  const price = makeDropPricer();
   const groups = new Map();
   for (const e of drops.entries || []) {
     const rotationEv = {};
@@ -346,7 +349,7 @@ function missionTypeTable(minPlat) {
     for (const [k, rows] of Object.entries(e.rotations)) {
       rewards[k] = rows.map(([name, chance]) => {
         const p = price(name);
-        return { name, slug: p.slug, thumb: p.thumb, icon: p.icon, chance, price: p.price ?? 0, rawPrice: p.rawPrice ?? 0, filtered: p.filtered };
+        return { name, slug: p.slug, thumb: p.thumb, icon: p.icon, chance, price: p.price ?? 0 };
       });
       rotationEv[k] = rewards[k].reduce((a, r) => a + (r.chance / 100) * r.price, 0);
     }
@@ -369,8 +372,8 @@ function missionTypeTable(minPlat) {
   }).sort((a, b) => b.avg - a.avg);
 }
 
-function missionPayouts(minPlat) {
-  const price = makeDropPricer(minPlat);
+function missionPayouts() {
+  const price = makeDropPricer();
   return MISSION_TYPES.map((t) => {
     const d = (drops.entries || []).find((e) => e.name === t.dropName);
     const groups = t.groups.map((g) => {
@@ -378,7 +381,6 @@ function missionPayouts(minPlat) {
         const p = price(name);
         return {
           name, slug: p.slug, thumb: p.thumb, icon: p.icon, chance, price: p.price,
-          rawPrice: p.rawPrice, filtered: p.filtered,
           expected: p.price === null ? 0 : (chance / 100) * p.price,
         };
       }).sort((a, b) => b.expected - a.expected);
@@ -414,7 +416,7 @@ async function itemDetail(slug) {
   let relic = null;
   const rel = (item.tags || []).includes('relic') && (drops.relics || {})[item.name.replace(/ Relic$/, '')];
   if (rel) {
-    const price = makeDropPricer(0);
+    const price = makeDropPricer();
     const names = new Map();
     for (const rows of Object.values(rel)) for (const [n, , rarity] of rows) if (!names.has(n)) names.set(n, rarity);
     relic = [...names].map(([name, rarity]) => {
@@ -462,8 +464,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { progress, crawling, totalItems: items.length, items: itemRows() });
     }
     if (url.pathname === '/api/missions') {
-      const minPlat = Math.max(0, parseFloat(url.searchParams.get('min')) || 0);
-      return json(res, 200, { missions: missionPayouts(minPlat), types: missionTypeTable(minPlat), dropsFetchedAt: drops.fetchedAt || null });
+      return json(res, 200, { missions: missionPayouts(), types: missionTypeTable(), dropsFetchedAt: drops.fetchedAt || null });
     }
     const m = url.pathname.match(/^\/api\/item\/([\w-]+)$/);
     if (m) {

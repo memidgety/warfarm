@@ -1,11 +1,8 @@
 const IMG = 'https://warframe.market/static/assets/';
 const container = document.getElementById('missions');
 const minPlatInput = document.getElementById('min-plat');
-let minTimer;
-minPlatInput.addEventListener('input', () => {
-  clearTimeout(minTimer);
-  minTimer = setTimeout(load, 300);
-});
+// Min Plat is applied here in the browser; the server only sends unfiltered prices.
+minPlatInput.addEventListener('input', () => { if (raw) render(); });
 const fmt = (v) => (v === null || v === undefined ? '-' : v.toFixed(1));
 
 function el(tag, text, cls) {
@@ -148,9 +145,56 @@ function renderGroup(m, g) {
   return wrap;
 }
 
+let raw = null;
+
+// Rewards priced below Min Plat count as 0 in totals but keep their real price for display.
+function priceRow(r, min) {
+  const filtered = r.price !== null && r.price > 0 && r.price < min;
+  return { ...r, rawPrice: r.price, filtered, price: filtered ? 0 : r.price };
+}
+
+function applyMinToTypes(list, min) {
+  return list.map((t) => {
+    const nodes = t.nodes.map((n) => {
+      const rewards = {};
+      let payout = 0;
+      for (const [rot, rows] of Object.entries(n.rewards)) {
+        rewards[rot] = rows.map((r) => priceRow(r, min));
+        const ev = rewards[rot].reduce((a, r) => a + (r.chance / 100) * r.price, 0);
+        payout += (n.weights[rot] || 0) * ev;
+      }
+      return { ...n, rewards, payout };
+    }).sort((a, b) => b.payout - a.payout);
+    return {
+      ...t, nodes,
+      avg: nodes.reduce((a, n) => a + n.payout, 0) / nodes.length,
+      best: { name: nodes[0].name, payout: nodes[0].payout },
+    };
+  });
+}
+
+function applyMinToMissions(list, min) {
+  return list.map((m) => ({
+    ...m,
+    groups: m.groups.map((g) => {
+      const rows = g.rows.map((r) => {
+        const p = priceRow(r, min);
+        return { ...p, expected: p.price === null ? 0 : (p.chance / 100) * p.price };
+      }).sort((a, b) => b.expected - a.expected);
+      return { ...g, rows, expectedPayout: rows.reduce((a, r) => a + r.expected, 0) };
+    }),
+  }));
+}
+
 async function load() {
+  raw = await (await fetch('/api/missions')).json();
+  render();
+  if (!raw.dropsFetchedAt) setTimeout(load, 5000);
+}
+
+function render() {
   const min = parseFloat(minPlatInput.value) || 0;
-  const j = await (await fetch(`/api/missions?min=${encodeURIComponent(min)}`)).json();
+  const j = { ...raw, types: applyMinToTypes(raw.types, min), missions: applyMinToMissions(raw.missions, min) };
   types = j.types;
   renderTypes();
   container.innerHTML = '';
@@ -173,7 +217,6 @@ async function load() {
   document.getElementById('status').textContent = missing
     ? 'Drop tables are still loading from warframe.com/droptables...'
     : '';
-  if (missing) setTimeout(load, 5000);
 }
 
 let types = [];

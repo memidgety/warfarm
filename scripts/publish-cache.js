@@ -56,8 +56,8 @@ async function main() {
   await put('items.json', { updatedAt, totalItems: cache.items.length, items: rows });
   await put('missions.json', {
     updatedAt,
-    missions: app.missionPayouts(0),
-    types: app.missionTypeTable(0),
+    missions: app.missionPayouts(),
+    types: app.missionTypeTable(),
     dropsFetchedAt: cache.drops.fetchedAt || null,
   });
 
