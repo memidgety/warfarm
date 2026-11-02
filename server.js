@@ -399,6 +399,29 @@ function missionPayouts() {
   });
 }
 
+function relicFor(item, price = makeDropPricer()) {
+  const rel = (item.tags || []).includes('relic') && (drops.relics || {})[item.name.replace(/ Relic$/, '')];
+  if (!rel) return null;
+  const names = new Map();
+  for (const rows of Object.values(rel)) for (const [n, , rarity] of rows) if (!names.has(n)) names.set(n, rarity);
+  return [...names].map(([name, rarity]) => {
+    const p = price(name);
+    const chance = (k) => ((rel[k] || []).find((r) => r[0] === name) || [])[1] ?? null;
+    return { name, rarity, slug: p.slug, price: p.price, intact: chance('Intact'), radiant: chance('Radiant') };
+  }).sort((a, b) => (b.price ?? -1) - (a.price ?? -1));
+}
+
+// Per-item data for the static site, which cannot call warframe.market for live orders.
+function itemDetails() {
+  const price = makeDropPricer();
+  const details = {};
+  for (const item of items) {
+    if (!stats[item.slug]) continue;
+    details[item.slug] = { item, relic: relicFor(item, price), buckets: stats[item.slug].buckets };
+  }
+  return details;
+}
+
 async function itemDetail(slug) {
   const item = items.find((i) => i.slug === slug);
   if (!item) return null;
@@ -413,21 +436,9 @@ async function itemDetail(slug) {
       user: o.user.ingameName, status: o.user.status,
     }));
   const d = (set && set.data) || {};
-  let relic = null;
-  const rel = (item.tags || []).includes('relic') && (drops.relics || {})[item.name.replace(/ Relic$/, '')];
-  if (rel) {
-    const price = makeDropPricer();
-    const names = new Map();
-    for (const rows of Object.values(rel)) for (const [n, , rarity] of rows) if (!names.has(n)) names.set(n, rarity);
-    relic = [...names].map(([name, rarity]) => {
-      const p = price(name);
-      const chance = (k) => ((rel[k] || []).find((r) => r[0] === name) || [])[1] ?? null;
-      return { name, rarity, slug: p.slug, price: p.price, intact: chance('Intact'), radiant: chance('Radiant') };
-    }).sort((a, b) => (b.price ?? -1) - (a.price ?? -1));
-  }
   return {
     item,
-    relic,
+    relic: relicFor(item),
     description: d.i18n?.en?.description || null,
     wikiLink: d.i18n?.en?.wikiLink || null,
     rarity: d.rarity || null,
@@ -523,6 +534,7 @@ module.exports = {
   crawl,
   refreshDrops,
   itemRows,
+  itemDetails,
   missionTypeTable,
   missionPayouts,
   getCache: () => ({ items, stats, drops }),

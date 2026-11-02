@@ -34,7 +34,7 @@ function nameCell(r, withIcon) {
   }
   if (r.slug) {
     const a = el('a', r.name);
-    a.href = `/item?slug=${encodeURIComponent(r.slug)}`;
+    a.href = `item.html?slug=${encodeURIComponent(r.slug)}`;
     name.appendChild(a);
   } else {
     name.appendChild(document.createTextNode(r.name));
@@ -187,7 +187,8 @@ function applyMinToMissions(list, min) {
 }
 
 async function load() {
-  raw = await (await fetch('/api/missions')).json();
+  const base = window.WARFARMER_DATA;
+  raw = await (await fetch(base ? `${base}/missions.json` : '/api/missions')).json();
   render();
   if (!raw.dropsFetchedAt) setTimeout(load, 5000);
 }

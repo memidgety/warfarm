@@ -54,7 +54,7 @@ function renderRelic(data) {
       let name = r.name;
       if (r.slug) {
         name = document.createElement('a');
-        name.href = `/item?slug=${encodeURIComponent(r.slug)}`;
+        name.href = `item.html?slug=${encodeURIComponent(r.slug)}`;
         name.textContent = r.name;
       }
       const f = (v) => (v == null ? '-' : v);
@@ -77,10 +77,22 @@ function renderRelic(data) {
   draw();
 }
 
+async function loadDetail() {
+  const base = window.WARFARMER_DATA;
+  if (!base) {
+    const res = await fetch(`/api/item/${encodeURIComponent(slug)}`);
+    return res.ok ? res.json() : null;
+  }
+  // Static site: warframe.market blocks browser requests, so live orders are unavailable.
+  const detail = (await (await fetch(`${base}/details.json`)).json())[slug];
+  if (!detail) return null;
+  document.querySelector('.cols').hidden = true;
+  return { ...detail, sell: [], buy: [] };
+}
+
 (async () => {
-  const res = await fetch(`/api/item/${encodeURIComponent(slug)}`);
-  if (!res.ok) { document.getElementById('name').textContent = 'Item not found'; return; }
-  const d = await res.json();
+  const d = await loadDetail();
+  if (!d) { document.getElementById('name').textContent = 'Item not found'; return; }
   document.title = `${d.item.name} - WarFarmer`;
   document.getElementById('name').textContent = d.item.name;
   const meta = document.getElementById('meta');

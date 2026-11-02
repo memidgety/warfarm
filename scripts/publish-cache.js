@@ -54,6 +54,7 @@ async function main() {
 
   await put('cache.json', cache);
   await put('items.json', { updatedAt, totalItems: cache.items.length, items: rows });
+  await put('details.json', app.itemDetails());
   await put('missions.json', {
     updatedAt,
     missions: app.missionPayouts(),
@@ -66,7 +67,7 @@ async function main() {
       DistributionId: distribution,
       InvalidationBatch: {
         CallerReference: String(Date.now()),
-        Paths: { Quantity: 3, Items: ['/cache.json', '/items.json', '/missions.json'] },
+        Paths: { Quantity: 4, Items: ['/cache.json', '/items.json', '/details.json', '/missions.json'] },
       },
     }));
     console.log('invalidated CloudFront paths');

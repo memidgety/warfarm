@@ -37,7 +37,7 @@ function render() {
       <td class="num">${i.volume}</td><td class="num">${fmt(i.avg)}</td><td class="num">${maxAvg}</td>`;
     const a = tr.querySelector('a');
     a.textContent = i.name;
-    a.href = `/item?slug=${encodeURIComponent(i.slug)}`;
+    a.href = `item.html?slug=${encodeURIComponent(i.slug)}`;
     rows.appendChild(tr);
   });
   updateHeaders();
@@ -52,7 +52,8 @@ document.querySelectorAll('th.sortable').forEach((th) => {
 });
 
 async function load() {
-  const j = await (await fetch('/api/items')).json();
+  const base = window.WARFARMER_DATA;
+  const j = await (await fetch(base ? `${base}/items.json` : '/api/items')).json();
   data = j.items;
   document.getElementById('status').textContent = j.crawling
     ? `Loading market data: ${j.progress.done}/${j.progress.total} items fetched this pass (${data.length} shown). Refresh later for more.`
