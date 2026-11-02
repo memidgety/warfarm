@@ -2,13 +2,12 @@
 
 Warframe mission farming assistant. WarFarmer is a Node.js web app that serves
 its pages and JSON API from one process. It fetches market and drop-table data
-from Warframe Market and the Warframe drop tables. Neon Postgres stores the
-latest cache, with a private Neon Object Storage snapshot for recovery.
+from Warframe Market and the Warframe drop tables and keeps a local JSON cache
+(`cache.json`).
 
 ## Run locally
 
-Requires Node.js 20 or newer. After setting up the Neon project, install the
-dependencies and start the app:
+Requires Node.js 20 or newer:
 
 ```sh
 npm install
@@ -16,8 +15,7 @@ npm run build
 npm start
 ```
 
-The app loads `.env.local` (or `.env`) for Neon credentials. Keep these files
-private; they are ignored by Git. Open `http://localhost:3000`.
+Open `http://localhost:3000`.
 
 ## Deploy with GitHub and Render
 
@@ -27,17 +25,20 @@ private; they are ignored by Git. Open `http://localhost:3000`.
    service. The service automatically redeploys when that branch changes.
 3. Open the Render service URL when its first deploy is ready.
 
-When creating the Blueprint, enter the five Neon environment variables
-(`DATABASE_URL`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
-`AWS_ENDPOINT_URL_S3`, and `AWS_REGION`) from the Neon project. The Render
-service uses the pooled `DATABASE_URL` for runtime queries; do not commit
-`.env.local`.
-
-The free Render service uses ephemeral storage and may spin down when idle. Its
-local cache file can be lost on restart, but it is rehydrated from Neon Postgres
-and Object Storage. The app checks both services at `/api/health`.
+The free Render service uses ephemeral storage and may spin down when idle, so
+its local cache is lost on restart. When the cache is empty, the server seeds it
+from the `CACHE_SEED_URL` environment variable (the published `cache.json`
+below) and then resumes crawling. `/api/health` reports the number of cached
+items.
 
 ## Static data publishing (S3 + CloudFront)
 
-.github/workflows/publish-cache.yml runs scripts/publish-cache.js every 3 hours. It crawls incrementally and uploads cache.json, items.json and missions.json to the private S3 bucket warfarmer-cache. CloudFront serves them at https://d12aw56padv05r.cloudfront.net with CORS enabled. Add AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (the warfarmer-cache-writer IAM user) as GitHub Actions secrets.
+`.github/workflows/publish-cache.yml` runs `scripts/publish-cache.js` every 3
+hours. It crawls incrementally and uploads `cache.json`, `items.json`,
+`details.json` and `missions.json` to the private S3 bucket `warfarmer-cache`.
+CloudFront serves them at https://d12aw56padv05r.cloudfront.net with CORS
+enabled. Add `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` (the
+`warfarmer-cache-writer` IAM user) as GitHub Actions secrets.
 
+`.github/workflows/pages.yml` publishes `public/` to GitHub Pages, pointing it
+at the CloudFront data.

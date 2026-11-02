@@ -1,18 +1,8 @@
-// Warframe.market reader: Node server with Neon-backed cache persistence.
+// Warframe.market reader: Node server with a local JSON cache.
 // Crawls per-item 48h statistics at a polite rate and serves API and static pages.
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-
-const envFile = ['.env.local', '.env']
-  .map((file) => path.join(__dirname, file))
-  .find((file) => fs.existsSync(file));
-if (envFile && require.main === module) require('dotenv').config({ path: envFile });
-
-// Persistence needs Neon credentials, so it is only loaded when running as the server.
-let closePersistence = async () => {};
-let verifyPersistence = async () => {};
-let writeCache = async () => {};
 
 const PORT = process.env.PORT || 3000;
 const API = 'https://api.warframe.market';
@@ -65,11 +55,24 @@ async function wfm(url) {
   throw new Error(`${url} rate limited`);
 }
 
-async function save(snapshotObjectStorage = false) {
-  const cache = { items, stats, drops };
+async function save() {
   fs.mkdirSync(path.dirname(CACHE_FILE), { recursive: true });
-  fs.writeFileSync(CACHE_FILE, JSON.stringify(cache));
-  await writeCache(cache, snapshotObjectStorage);
+  fs.writeFileSync(CACHE_FILE, JSON.stringify({ items, stats, drops }));
+}
+
+// An empty local cache (e.g. after a Render restart) is seeded from a published cache.json.
+async function seedCache(cache) {
+  const url = process.env.CACHE_SEED_URL;
+  if (cache.items.length || !url) return cache;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`${url} -> ${res.status}`);
+    const seed = await res.json();
+    return { items: seed.items || [], stats: seed.stats || {}, drops: seed.drops || {} };
+  } catch (error) {
+    console.error('cache seed failed:', error.message);
+    return cache;
+  }
 }
 
 // Mission types. Each group is one reward pool; a mission is a single weighted
@@ -201,7 +204,7 @@ async function refreshDrops(force = false) {
     const entries = parseDropPage(html);
     if (!entries.length) throw new Error('no drop tables parsed');
     drops = { fetchedAt: Date.now(), entries, relics: parseRelics(html) };
-    await save(true);
+    await save();
   } catch (e) {
     console.error('drop refresh failed:', e.message);
   } finally {
@@ -267,7 +270,7 @@ async function crawl() {
       progress.done++;
       if (progress.done % 50 === 0) await save();
     }
-    if (queue.length) await save(true);
+    if (queue.length) await save();
   } catch (e) {
     console.error('crawl failed:', e.message);
   } finally {
@@ -512,8 +515,7 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   try {
     if (url.pathname === '/api/health') {
-      await verifyPersistence();
-      return json(res, 200, { ok: true, postgres: 'connected', objectStorage: 'connected' });
+      return json(res, 200, { ok: true, items: items.length });
     }
     if (url.pathname === '/api/items') {
       return json(res, 200, { progress, crawling, totalItems: items.length, items: itemRows() });
@@ -539,14 +541,9 @@ const server = http.createServer(async (req, res) => {
 });
 
 async function start() {
-  const persistence = require('./persistence');
-  ({ closePersistence, verifyPersistence, writeCache } = persistence);
-  const { initializeCache } = persistence;
-  useCache(await initializeCache(readLocalCache()));
-  fs.mkdirSync(path.dirname(CACHE_FILE), { recursive: true });
-  fs.writeFileSync(CACHE_FILE, JSON.stringify({ items, stats, drops }));
+  useCache(await seedCache(readLocalCache()));
+  await save();
   server.listen(PORT, () => console.log(`http://localhost:${PORT}`));
-  console.log('Persistent cache ready (Neon Postgres and Object Storage)');
   crawl();
   setInterval(crawl, 15 * 60 * 1000);
   refreshDrops();
@@ -559,18 +556,7 @@ if (require.main === module) {
     process.exitCode = 1;
   });
 
-  for (const signal of ['SIGINT', 'SIGTERM']) {
-    process.on(signal, () => {
-      server.close(async () => {
-        try {
-          await closePersistence();
-        } catch (error) {
-          console.error('shutdown failed:', error);
-          process.exitCode = 1;
-        }
-      });
-    });
-  }
+  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => server.close());
 }
 
 module.exports = {

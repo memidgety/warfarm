@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "node --check server.js && node --check persistence.js && node --check public/index.js && node --check public/item.js && node --check public/missions.js",
+    "build": "node --check server.js && node --check scripts/publish-cache.js && node --check public/index.js && node --check public/item.js && node --check public/missions.js",
     "start": "node server.js"
   },
   "engines": {
@@ -11,10 +11,6 @@
   },
   "dependencies": {
     "@aws-sdk/client-cloudfront": "^3.1161.0",
-    "@aws-sdk/client-s3": "^3.1161.0",
-    "@neon/config": "^1.10.0",
-    "@neon/env": "^1.6.8",
-    "dotenv": "^18.0.9",
-    "pg": "^8.23.1"
+    "@aws-sdk/client-s3": "^3.1161.0"
   }
 }

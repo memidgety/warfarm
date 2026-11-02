@@ -8,13 +8,5 @@ services:
     healthCheckPath: /api/health
     autoDeploy: true
     envVars:
-      - key: DATABASE_URL
-        sync: false
-      - key: AWS_ACCESS_KEY_ID
-        sync: false
-      - key: AWS_SECRET_ACCESS_KEY
-        sync: false
-      - key: AWS_ENDPOINT_URL_S3
-        sync: false
-      - key: AWS_REGION
-        sync: false
+      - key: CACHE_SEED_URL
+        value: https://d12aw56padv05r.cloudfront.net/cache.json
