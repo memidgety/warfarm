@@ -109,11 +109,11 @@ test('parses standalone reward sections and excludes by-source indexes', () => {
   app.useCache({ items: [], stats: {}, drops: { entries, relics: {} } });
   const bounty = app.missionTypeTable().find((entry) => entry.category === 'Orb Vallis Bounty Rewards');
   assert.ok(bounty);
-  assert.equal(bounty.nodes[0].basis, 'Sum of stages (average of rotations)');
-  assert.equal(bounty.nodes[0].weights['A - Stage 1'], 1 / 3);
-  assert.equal(bounty.nodes[0].weights['B - Stage 1'], 1 / 3);
-  assert.equal(bounty.nodes[0].weights['C - Stage 1'], 1 / 3);
-  assert.equal(bounty.nodes[0].weights['A - Stage 2, Stage 3 of 4, and Stage 3 of 5'], 1);
+  assert.deepEqual(bounty.nodes.map((n) => n.name).sort(), ['Rotation A', 'Rotation B', 'Rotation C']);
+  const rotA = bounty.nodes.find((n) => n.name === 'Rotation A');
+  assert.deepEqual(Object.keys(rotA.rewards), ['Stage 1', 'Stage 2, Stage 3 of 4, and Stage 3 of 5']);
+  assert.equal(rotA.weights['Stage 1'], 1);
+  assert.equal(rotA.basis, 'Sum of stages');
 });
 
 test('adds relic pools to the reward table without changing relic cache shape', () => {

@@ -381,6 +381,9 @@ function nodePayout(type, rotationEv) {
   return weigh('Sum of rotations', () => 1);
 }
 
+// Categories whose A/B/C rotations are shown as separate tables per bounty.
+const ROTATION_TABLE_CATEGORIES = ['Cetus Bounty Rewards', 'Cambion Drift Bounty Rewards', 'Orb Vallis Bounty Rewards'];
+
 function missionTypeTable() {
   const price = makeDropPricer();
   const groups = new Map();
@@ -398,6 +401,29 @@ function missionTypeTable() {
         return { name, slug: p.slug, thumb: p.thumb, icon: p.icon, chance, price: p.price ?? 0 };
       });
       rotationEv[k] = rewards[k].reduce((a, r) => a + (r.chance / 100) * r.price, 0);
+    }
+    const letters = [...new Set(Object.keys(rewards).map((k) => k[0]))].sort();
+    if (ROTATION_TABLE_CATEGORIES.includes(e.category) && letters.length > 1
+      && Object.keys(rewards).every((k) => /^[ABC]( - |$)/.test(k))) {
+      // Each A/B/C rotation gets its own table; its stages are all rolled once.
+      for (const letter of letters) {
+        const nodeRewards = {};
+        const nodeEv = {};
+        for (const [k, rows] of Object.entries(rewards)) {
+          if (k[0] !== letter) continue;
+          const stage = k.replace(/^[ABC] - /, '');
+          nodeRewards[stage] = rows;
+          nodeEv[stage] = rotationEv[k];
+        }
+        const weights = {};
+        Object.keys(nodeEv).forEach((k) => { weights[k] = 1; });
+        addNode(e.category, e.type, {
+          name: `Rotation ${letter}`, rotationEv: nodeEv, rewards: nodeRewards, weights,
+          payout: Object.values(nodeEv).reduce((a, v) => a + v, 0),
+          basis: 'Sum of stages',
+        });
+      }
+      continue;
     }
     const node = { name: e.name, rotationEv, rewards, ...nodePayout(e.type, rotationEv) };
     addNode(e.category, e.type, node);
