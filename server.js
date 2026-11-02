@@ -107,13 +107,20 @@ function missionTypeOf(title) {
   return extra ? `${type} (Extra)` : type;
 }
 
-// Parses the Missions and Dynamic Location regions of the drop table page into
-// [{name, type, category, rotations: {A: [[item, chance]]}}]. Tables without
-// rotation headers are stored as a single rotation "A".
+// Parses standalone reward tables, stopping before the "by source/item" indexes.
+// [{name, type, category, rotations: {A: [[item, chance]]}}].
 function parseDropPage(html) {
   const regions = [
     { from: 'id="missionRewards"', to: 'id="relicRewards"', category: 'Missions' },
+    { from: 'id="keyRewards"', to: 'id="transientRewards"', category: 'Keys' },
     { from: 'id="transientRewards"', to: 'id="sortieRewards"', category: 'Dynamic locations' },
+    { from: 'id="sortieRewards"', to: 'id="cetusRewards"', category: 'Sorties' },
+    { from: 'id="cetusRewards"', to: 'id="solarisRewards"', category: 'Cetus Bounty Rewards' },
+    { from: 'id="solarisRewards"', to: 'id="deimosRewards"', category: 'Orb Vallis Bounty Rewards' },
+    { from: 'id="deimosRewards"', to: 'id="zarimanRewards"', category: 'Cambion Drift Bounty Rewards' },
+    { from: 'id="zarimanRewards"', to: 'id="entratiLabRewards"', category: 'Zariman Bounty Rewards' },
+    { from: 'id="entratiLabRewards"', to: 'id="hexRewards"', category: "Albrecht's Laboratories Bounty Rewards" },
+    { from: 'id="hexRewards"', to: 'id="modByAvatar"', category: 'Hex Bounty Rewards' },
   ];
   const entries = [];
   for (const r of regions) {
@@ -122,18 +129,25 @@ function parseDropPage(html) {
     if (start < 0 || end < 0) continue;
     for (const block of html.slice(start, end).split('<tr class="blank-row">')) {
       let name = null;
-      let current = 'A';
+      let rotation = 'A';
+      let stage = null;
       const rotations = {};
       for (const row of block.matchAll(/<tr[^>]*>(.*?)<\/tr>/g)) {
         const th = row[1].match(/<th[^>]*>([^<]*)<\/th>/);
         const td = [...row[1].matchAll(/<td[^>]*>([^<]*)<\/td>/g)].map((x) => x[1]);
         if (th) {
-          const rot = th[1].match(/^Rotation (\w+)$/);
-          if (rot) current = rot[1];
-          else if (name === null && !td.length && !/^(Missions|Dynamic Location Rewards):$/.test(th[1])) name = decodeHtml(th[1]);
+          const heading = decodeHtml(th[1]).trim();
+          const rot = heading.match(/^Rotation (\w+)$/);
+          if (rot) { rotation = rot[1]; stage = null; }
+          else if (/^(Stage \d|Final stage\b)/i.test(heading)) stage = heading;
+          else if (name === null && !td.length && !/^(Missions|Dynamic Location Rewards):$/.test(heading)) name = heading;
         } else if (td.length >= 2) {
-          const chance = td[1].match(/\(([\d.]+)%\)/);
-          if (chance) (rotations[current] = rotations[current] || []).push([decodeHtml(td[0]), parseFloat(chance[1])]);
+          const chance = td[td.length - 1].match(/\(([\d.]+)%\)/);
+          const item = td[td.length - 2];
+          if (chance && item.trim()) {
+            const pool = stage ? `${rotation} - ${stage}` : rotation;
+            (rotations[pool] = rotations[pool] || []).push([decodeHtml(item), parseFloat(chance[1])]);
+          }
         }
       }
       if (name && Object.keys(rotations).length) {
@@ -151,10 +165,10 @@ function parseDropPage(html) {
 // Relic tables: { "Axi A1": { Intact: [[item, chance, rarity]], Radiant: [...] } }
 function parseRelics(html) {
   const start = html.indexOf('id="relicRewards"');
-  const end = html.indexOf('id="transientRewards"', start);
+  const end = html.indexOf('id="keyRewards"', start);
   const relics = {};
-  if (start < 0) return relics;
-  const region = html.slice(start, end < 0 ? undefined : end);
+  if (start < 0 || end < 0) return relics;
+  const region = html.slice(start, end);
   for (const block of region.split('<tr class="blank-row">')) {
     let key = null;
     let refine = null;
@@ -176,9 +190,9 @@ function parseRelics(html) {
 }
 
 let dropsLoading = false;
-async function refreshDrops() {
+async function refreshDrops(force = false) {
   if (dropsLoading) return;
-  if (drops.entries && drops.relics && Date.now() - drops.fetchedAt <= DROPS_REFRESH_MS) return;
+  if (!force && drops.entries && drops.relics && Date.now() - drops.fetchedAt <= DROPS_REFRESH_MS) return;
   dropsLoading = true;
   try {
     const res = await fetch(DROP_TABLES_URL, { headers: { 'User-Agent': HEADERS['User-Agent'] } });
@@ -336,6 +350,18 @@ function nodePayout(type, rotationEv) {
   if (['A', 'B', 'C'].every((k) => k in rotationEv)) {
     return weigh('Per reward, AABC cycle', (k) => ({ A: 0.5, B: 0.25, C: 0.25 }[k] ?? 0));
   }
+  const stagePools = new Map();
+  for (const key of keys) {
+    const match = key.match(/^[ABC] - (.+)$/);
+    if (match) stagePools.set(match[1], [...(stagePools.get(match[1]) || []), key]);
+  }
+  if (stagePools.size) {
+    const weights = {};
+    for (const stageKeys of stagePools.values()) {
+      stageKeys.forEach((key) => { weights[key] = 1 / stageKeys.length; });
+    }
+    return weigh('Sum of stages (average of rotations)', (k) => weights[k] || 0);
+  }
   if (keys.length === 1) return weigh('Single reward', () => 1);
   return weigh('Sum of rotations', () => 1);
 }
@@ -343,6 +369,11 @@ function nodePayout(type, rotationEv) {
 function missionTypeTable() {
   const price = makeDropPricer();
   const groups = new Map();
+  const addNode = (category, type, node) => {
+    const key = `${category}|${type}`;
+    if (!groups.has(key)) groups.set(key, { type, category, nodes: [] });
+    groups.get(key).nodes.push(node);
+  };
   for (const e of drops.entries || []) {
     const rotationEv = {};
     const rewards = {};
@@ -354,9 +385,22 @@ function missionTypeTable() {
       rotationEv[k] = rewards[k].reduce((a, r) => a + (r.chance / 100) * r.price, 0);
     }
     const node = { name: e.name, rotationEv, rewards, ...nodePayout(e.type, rotationEv) };
-    const key = `${e.category}|${e.type}`;
-    if (!groups.has(key)) groups.set(key, { type: e.type, category: e.category, nodes: [] });
-    groups.get(key).nodes.push(node);
+    addNode(e.category, e.type, node);
+  }
+  for (const [relic, refinements] of Object.entries(drops.relics || {})) {
+    for (const [refinement, rows] of Object.entries(refinements)) {
+      const rewards = rows.map(([name, chance]) => {
+        const p = price(name);
+        return { name, slug: p.slug, thumb: p.thumb, icon: p.icon, chance, price: p.price ?? 0 };
+      });
+      const rotationEv = { A: rewards.reduce((a, r) => a + (r.chance / 100) * r.price, 0) };
+      addNode('Relics', `Relic (${refinement})`, {
+        name: `${relic} Relic (${refinement})`,
+        rotationEv,
+        rewards: { A: rewards },
+        ...nodePayout('Relic', rotationEv),
+      });
+    }
   }
   return [...groups.values()].map((g) => {
     g.nodes.sort((a, b) => b.payout - a.payout);
@@ -533,6 +577,8 @@ module.exports = {
   useCache,
   crawl,
   refreshDrops,
+  parseDropPage,
+  parseRelics,
   itemRows,
   itemDetails,
   missionTypeTable,

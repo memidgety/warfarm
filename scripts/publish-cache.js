@@ -44,7 +44,8 @@ async function put(key, value) {
 
 async function main() {
   app.useCache(await readExisting());
-  await app.refreshDrops();
+  // Manual workflow runs always re-fetch the drop tables instead of reusing the 24h cache.
+  await app.refreshDrops(process.env.FORCE_DROPS_REFRESH === 'true');
   await app.crawl();
 
   const cache = app.getCache();

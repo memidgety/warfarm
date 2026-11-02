@@ -249,7 +249,10 @@ function nodeTable(t) {
 
 function renderTypes() {
   const q = typeSearch.value.trim().toLowerCase();
-  const list = types.filter((t) => !q || t.type.toLowerCase().includes(q));
+  const list = types.filter((t) => !q
+    || t.category.toLowerCase().includes(q)
+    || t.type.toLowerCase().includes(q)
+    || t.nodes.some((n) => n.name.toLowerCase().includes(q)));
   list.sort((a, b) => {
     const x = typeValue(a, sortKey);
     const y = typeValue(b, sortKey);
@@ -259,7 +262,7 @@ function renderTypes() {
   list.forEach((t) => {
     const key = `${t.category}|${t.type}`;
     const tr = el('tr', undefined, 'clickable');
-    tr.appendChild(el('td', `${expanded.has(key) ? '\u25BE' : '\u25B8'} ${t.type}`));
+    tr.appendChild(el('td', `${expanded.has(key) ? '\u25BE' : '\u25B8'} ${t.category}: ${t.type}`));
     tr.appendChild(el('td', t.avg.toFixed(2), 'num'));
     tr.appendChild(el('td', t.nodeCount > 1 ? `${t.best.payout.toFixed(2)} (${t.best.name})` : t.best.payout.toFixed(2), 'num'));
     tr.addEventListener('click', () => {

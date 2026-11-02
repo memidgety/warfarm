@@ -2,24 +2,25 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>WarFarmer - Mission Types</title>
+<title>WarFarmer - Missions and Rewards</title>
 <link rel="stylesheet" href="style.css">
 <link rel="icon" href="favicon.ico" sizes="any">
 </head>
 <body>
 <p><a href="index.html">&larr; Market volume</a></p>
-<h1>Mission Types - Average Payout</h1>
+<h1>Missions and Rewards - Average Payout</h1>
 <div id="status"></div>
 
-<h2>All mission types</h2>
+<h2>Mission and reward tables</h2>
 <p class="muted">
   Expected platinum value of the market-tradable drops (rank 0 prices; Endo, Credits and untradable items count as 0).
-  Click a row to see its individual nodes. Source: <a href="https://warframe.com/droptables">warframe.com/droptables</a>.
+  Click a row to see its individual reward tables. Includes standalone drop tables, not the "by source/item" indexes. Source:
+  <a href="https://warframe.com/droptables">warframe.com/droptables</a>.
 </p>
-<input id="search" placeholder="Search mission types...">
+<input id="search" placeholder="Search mission and reward tables...">
 <label class="min-plat plat">Min Plat <input id="min-plat" type="number" min="0" step="1" value="0"></label><table id="types">
   <thead><tr>
-    <th class="sortable" data-sort="type">Mission type</th>
+    <th class="sortable" data-sort="type">Reward table</th>
     <th class="num sortable" data-sort="avg"><span class="plat">Avg payout</span></th>
     <th class="num sortable" data-sort="best"><span class="plat">Best node</span></th>
   </tr></thead>
