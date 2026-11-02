@@ -60,17 +60,29 @@ async function save() {
   fs.writeFileSync(CACHE_FILE, JSON.stringify({ items, stats, drops }));
 }
 
-// An empty local cache (e.g. after a Render restart) is seeded from a published cache.json.
+const DEFAULT_CACHE_URL = 'https://d12aw56padv05r.cloudfront.net/cache.json';
+
+// Merges the published AWS cache into the local one, keeping the newer copy of each entry.
+// Set CACHE_SEED_URL to another URL, or to "off" to skip.
 async function seedCache(cache) {
-  const url = process.env.CACHE_SEED_URL;
-  if (cache.items.length || !url) return cache;
+  const url = process.env.CACHE_SEED_URL || DEFAULT_CACHE_URL;
+  if (url === 'off') return cache;
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`${url} -> ${res.status}`);
-    const seed = await res.json();
-    return { items: seed.items || [], stats: seed.stats || {}, drops: seed.drops || {} };
+    const remote = await res.json();
+    const merged = {
+      items: remote.items?.length ? remote.items : cache.items,
+      stats: { ...(remote.stats || {}) },
+      drops: (remote.drops?.fetchedAt || 0) >= (cache.drops?.fetchedAt || 0) ? (remote.drops || {}) : cache.drops,
+    };
+    for (const [slug, s] of Object.entries(cache.stats || {})) {
+      if (!merged.stats[slug] || s.fetchedAt > merged.stats[slug].fetchedAt) merged.stats[slug] = s;
+    }
+    console.log(`loaded AWS cache: ${Object.keys(remote.stats || {}).length} items`);
+    return merged;
   } catch (error) {
-    console.error('cache seed failed:', error.message);
+    console.error('AWS cache load failed:', error.message);
     return cache;
   }
 }
