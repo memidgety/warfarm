@@ -22,7 +22,7 @@ function priceCell(filtered, rawPrice, price) {
 
 const sortStates = new Map(); // table id -> {key, dir}; survives re-renders
 
-function nameCell(r, withIcon) {
+function nameCell(r, withIcon, noteId) {
   const name = el('td');
   if (withIcon && r.thumb) {
     const icon = el('span', undefined, 'item-thumb');
@@ -40,6 +40,19 @@ function nameCell(r, withIcon) {
     name.appendChild(document.createTextNode(r.name));
   }
   if (r.thumb) attachPreview(name, r);
+  if (r.unique && noteId) {
+    const sup = el('sup');
+    const link = el('a', '1');
+    link.href = `#${noteId}`;
+    link.title = 'Unique to this rotation';
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const target = document.getElementById(noteId);
+      if (target) target.scrollIntoView({ block: 'nearest' });
+    });
+    sup.appendChild(link);
+    name.appendChild(sup);
+  }
   return name;
 }
 
@@ -73,6 +86,8 @@ function attachPreview(target, r) {
   target.addEventListener('mouseleave', () => { popup.hidden = true; });
 }
 
+let noteCounter = 0;
+
 // Reward table with sortable Chance / Price / Expected headers.
 // rows: [{rot?, name, slug, thumb, chance, price, rawPrice, filtered}]
 function rewardTable(id, rows, { rotation = false, icon = false, nameLabel = 'Reward' } = {}) {
@@ -103,6 +118,17 @@ function rewardTable(id, rows, { rotation = false, icon = false, nameLabel = 'Re
   table.appendChild(thead);
   const body = el('tbody');
   table.appendChild(body);
+  const noteId = rows.some((r) => r.unique) ? `unique-note-${++noteCounter}` : null;
+  if (noteId) {
+    const foot = el('tfoot');
+    const tr = el('tr');
+    const td = el('td', '1 These rewards are unique to this rotation.', 'muted');
+    td.id = noteId;
+    td.colSpan = rotation ? 5 : 4;
+    tr.appendChild(td);
+    foot.appendChild(tr);
+    table.appendChild(foot);
+  }
 
   function render() {
     const s = sortStates.get(id);
@@ -123,7 +149,7 @@ function rewardTable(id, rows, { rotation = false, icon = false, nameLabel = 'Re
     list.forEach((r) => {
       const tr = el('tr');
       if (rotation) tr.appendChild(el('td', r.rot));
-      tr.appendChild(nameCell(r, icon));
+      tr.appendChild(nameCell(r, icon, noteId));
       tr.appendChild(el('td', `${r.chance.toFixed(2)}%`, 'num'));
       tr.appendChild(priceCell(r.filtered, r.rawPrice, r.price));
       tr.appendChild(el('td', r.price === null ? '-' : expected(r).toFixed(2), r.price === null ? 'num' : 'num plat'));

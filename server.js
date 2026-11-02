@@ -403,6 +403,16 @@ function missionTypeTable() {
       rotationEv[k] = rewards[k].reduce((a, r) => a + (r.chance / 100) * r.price, 0);
     }
     const letters = [...new Set(Object.keys(rewards).map((k) => k[0]))].sort();
+    if (ROTATION_TABLE_CATEGORIES.includes(e.category) && letters.length > 1) {
+      // Mark rewards that drop from only one of the A/B/C pools of this bounty.
+      const pools = new Map();
+      for (const [k, rows] of Object.entries(rewards)) {
+        for (const r of rows) pools.set(r.name, (pools.get(r.name) || new Set()).add(k[0]));
+      }
+      for (const rows of Object.values(rewards)) {
+        for (const r of rows) r.unique = pools.get(r.name).size === 1;
+      }
+    }
     if (ROTATION_TABLE_CATEGORIES.includes(e.category) && letters.length > 1
       && Object.keys(rewards).every((k) => /^[ABC]( - |$)/.test(k))) {
       // Each A/B/C rotation gets its own table; its stages are all rolled once.
