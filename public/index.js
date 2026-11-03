@@ -2,6 +2,20 @@ const IMG = 'https://warframe.market/static/assets/';
 let data = [];
 const rows = document.getElementById('rows');
 const search = document.getElementById('search');
+const typeFilters = document.querySelectorAll('.type-filter input[type="checkbox"]');
+const typeTags = {
+  mod: ['mod'],
+  arcane: ['arcane_enhancement', 'arcane_helmet'],
+  relic: ['relic'],
+  weapon: ['weapon'],
+  warframe: ['warframe'],
+  component: ['component'],
+  blueprint: ['blueprint'],
+  set: ['set'],
+  resource: ['fish', 'gem', 'ore', 'resource', 'mineral'],
+  cosmetic: ['scene', 'skin', 'emote', 'simulacrum', 'glyph'],
+};
+const categorizedTags = new Set(Object.values(typeTags).flat());
 
 let sortKey = 'volume';
 let sortDir = -1; // -1 descending, 1 ascending
@@ -18,7 +32,15 @@ function updateHeaders() {
 
 function render() {
   const q = search.value.trim().toLowerCase();
-  const list = data.filter((i) => !q || i.name.toLowerCase().includes(q));
+  const selectedTypes = [...typeFilters].filter((filter) => filter.checked).map((filter) => filter.value);
+  const list = data.filter((i) => {
+    if (q && !i.name.toLowerCase().includes(q)) return false;
+    if (!selectedTypes.length) return true;
+    return selectedTypes.some((type) => {
+      if (type === 'other') return !i.tags?.some((tag) => categorizedTags.has(tag));
+      return typeTags[type].some((tag) => i.tags?.includes(tag));
+    });
+  });
   // Items without a value always sort last.
   list.sort((a, b) => {
     const x = sortValue(a, sortKey);
@@ -63,4 +85,5 @@ async function load() {
 }
 
 search.addEventListener('input', render);
+typeFilters.forEach((filter) => filter.addEventListener('change', render));
 load();

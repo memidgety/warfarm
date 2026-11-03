@@ -25,4 +25,8 @@ img { vertical-align: middle; margin-right: 8px; }
 .item-icon-preview .item-icon { width: 32px; height: 32px; object-fit: contain; margin: 0; }
 .item-icon-preview .item-icon:hover { position: absolute; z-index: 1; top: 0; left: 0; width: auto; height: auto; max-width: 360px; max-height: 360px; background: #1d2026; border: 1px solid #444; scale: 1.5; }
 input { padding: 6px; width: 300px; margin: 8px 0; background: #1d2026; color: #ddd; border: 1px solid #333; }
+input[type="checkbox"] { width: auto; padding: 0; margin: 0 4px 0 0; vertical-align: middle; accent-color: #6cb8ff; }
+.type-filter { border: 1px solid #2a2d33; border-radius: 4px; margin: 0 0 8px; padding: 6px 10px 10px; }
+.type-options { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.type-options label { white-space: nowrap; }
 .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
