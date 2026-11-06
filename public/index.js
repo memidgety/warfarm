@@ -40,11 +40,30 @@ function updateHeaders() {
   });
 }
 
+// Search syntax: space-separated terms must all match. "-term" excludes, "/regex/" is a
+// case-insensitive regex, and "quoted phrases" may contain spaces. Combine, e.g. -/prime$/.
+function parseSearch(text) {
+  const tokens = text.match(/-?\/(?:\\.|[^/\\])+\/|-?"[^"]*"|\S+/g) || [];
+  return tokens.map((raw) => {
+    const exclude = raw.length > 1 && raw.startsWith('-');
+    let term = exclude ? raw.slice(1) : raw;
+    if (term.length > 2 && term.startsWith('"') && term.endsWith('"')) term = term.slice(1, -1);
+    if (term.length > 2 && term.startsWith('/') && term.endsWith('/')) {
+      try {
+        const re = new RegExp(term.slice(1, -1), 'i');
+        return { exclude, test: (name) => re.test(name) };
+      } catch { /* invalid regex: treat as plain text */ }
+    }
+    const lower = term.toLowerCase();
+    return { exclude, test: (name) => name.toLowerCase().includes(lower) };
+  });
+}
+
 function render() {
-  const q = search.value.trim().toLowerCase();
+  const terms = parseSearch(search.value);
   const selectedTypes = [...typeFilters].filter((filter) => filter.checked).map((filter) => filter.value);
   const list = data.filter((i) => {
-    if (q && !i.name.toLowerCase().includes(q)) return false;
+    if (terms.some((t) => t.test(i.name) === t.exclude)) return false;
     if (!selectedTypes.length) return true;
     return selectedTypes.some((type) => {
       if (type === 'other') return !i.tags?.some((tag) => categorizedTags.has(tag));
