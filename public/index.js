@@ -21,6 +21,16 @@ let sortKey = 'volume';
 let sortDir = -1; // -1 descending, 1 ascending
 
 const sortValue = (i, key) => (key === 'maxAvg' ? i.maxRank?.avg : i[key]);
+
+// Rating = (volume / highest volume across all items) * average price (lowest rank).
+function computeRatings() {
+  const maxVolume = Math.max(0, ...data.map((i) => i.volume || 0));
+  data.forEach((i) => {
+    const hasValues = i.volume !== null && i.volume !== undefined && i.avg !== null && i.avg !== undefined;
+    i.rating = maxVolume && hasValues ? (i.volume / maxVolume) * i.avg : null;
+  });
+}
+
 const fmt = (v) => (v === null || v === undefined ? '-' : v.toFixed(1));
 
 function updateHeaders() {
@@ -56,7 +66,8 @@ function render() {
     const maxAvg = i.maxRank ? `${fmt(i.maxRank.avg)} <small>(R${i.maxRank.rank})</small>` : '-';
     tr.innerHTML = `<td>${n + 1}</td>
       <td><span class="item-icon-preview"><img class="item-icon" src="${IMG}${i.thumb}" alt=""></span><a></a></td>
-      <td class="num">${i.volume}</td><td class="num">${fmt(i.avg)}</td><td class="num">${maxAvg}</td>`;
+      <td class="num">${i.volume}</td><td class="num">${fmt(i.avg)}</td><td class="num">${maxAvg}</td>
+      <td class="num">${fmt(i.rating)}</td>`;
     const a = tr.querySelector('a');
     a.textContent = i.name;
     a.href = `item.html?slug=${encodeURIComponent(i.slug)}`;
@@ -77,6 +88,7 @@ async function load() {
   const base = window.WARFARMER_DATA;
   const j = await (await fetch(base ? `${base}/items.json` : '/api/items')).json();
   data = j.items;
+  computeRatings();
   document.getElementById('status').textContent = j.crawling
     ? `Loading market data: ${j.progress.done}/${j.progress.total} items fetched this pass (${data.length} shown). Refresh later for more.`
     : `${data.length} items with stats.`;
