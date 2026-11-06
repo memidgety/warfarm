@@ -32,13 +32,15 @@ function nameCell(r, withIcon, noteId) {
     icon.appendChild(img);
     name.appendChild(icon);
   }
+  const label = r.filtered ? el('s', undefined, 'filtered') : name;
   if (r.slug) {
     const a = el('a', r.name);
     a.href = `item.html?slug=${encodeURIComponent(r.slug)}`;
-    name.appendChild(a);
+    label.appendChild(a);
   } else {
-    name.appendChild(document.createTextNode(r.name));
+    label.appendChild(document.createTextNode(r.name));
   }
+  if (r.filtered) name.appendChild(label);
   if (r.thumb) attachPreview(name, r);
   if (r.unique && noteId) {
     const sup = el('sup');
