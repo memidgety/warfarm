@@ -14,7 +14,7 @@ body { font-family: Roboto, sans-serif; background: #14161a; color: #ddd; max-wi
 button, input, select, textarea { font: inherit; }
 a { color: #6cb8ff; }
 .wiki-button { display: inline-block; padding: 8px 12px; border-radius: 4px; background: #2873c5; color: #fff; text-decoration: none; }
-.wiki-button, button, input[type="button"], input[type="submit"], input[type="reset"], .type-options label { text-transform: uppercase; font-weight: 600; }
+.wiki-button, button, input[type="button"], input[type="submit"], input[type="reset"] { text-transform: uppercase; font-weight: 600; }
 .wiki-button:hover { background: #3488df; }
 table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
 th, td { padding: 4px 8px; border-bottom: 1px solid #2a2d33; text-align: left; }
@@ -46,9 +46,10 @@ input[type="checkbox"] { width: auto; padding: 0; margin: 0 4px 0 0; vertical-al
 .type-filter legend { padding: 0 0 4px; }
 .type-options { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0; }
 @media (min-width: 1000px) { .type-options { grid-template-columns: repeat(11, 1fr); } }
-.type-options label { position: relative; white-space: nowrap; background: rgb(56 159 184); color: #fff; padding: 5px 4px; text-align: center; font-size: 0.9rem; border-radius: 0; cursor: pointer; user-select: none; transition: background 0.15s; }
-.type-options label:hover { background: rgb(50 143 165); }
-.type-options label:has(input:checked) { background: rgb(40 115 133); }
-.type-options label:has(input:focus-visible) { outline: 2px solid #fff; outline-offset: 1px; }
-.type-options input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
+.type-options .type-btn { white-space: nowrap; background: rgb(56 159 184); color: #fff; border: 0; padding: 5px 4px; text-align: center; font-size: 0.9rem; border-radius: 0; cursor: pointer; user-select: none; transition: background 0.15s; }
+.type-options .type-btn:hover { background: rgb(50 143 165); }
+.type-options .type-btn[data-state="include"] { background: rgb(40 115 133); }
+.type-options .type-btn[data-state="exclude"] { background: rgb(190 60 60); }
+.type-options .type-btn[data-state="exclude"]:hover { background: rgb(172 52 52); }
+.type-options .type-btn:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
 .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }

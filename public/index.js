@@ -2,7 +2,7 @@ const IMG = 'https://warframe.market/static/assets/';
 let data = [];
 const rows = document.getElementById('rows');
 const search = document.getElementById('search');
-const typeFilters = document.querySelectorAll('.type-filter input[type="checkbox"]');
+const typeFilters = document.querySelectorAll('.type-btn');
 const typeTags = {
   mod: ['mod'],
   arcane: ['arcane_enhancement', 'arcane_helmet'],
@@ -61,14 +61,16 @@ function parseSearch(text) {
 
 function render() {
   const terms = parseSearch(search.value);
-  const selectedTypes = [...typeFilters].filter((filter) => filter.checked).map((filter) => filter.value);
+  const typesIn = (state) => [...typeFilters].filter((b) => b.dataset.state === state).map((b) => b.dataset.type);
+  const included = typesIn('include');
+  const excluded = typesIn('exclude');
+  const matchesType = (i, type) => (type === 'other'
+    ? !i.tags?.some((tag) => categorizedTags.has(tag))
+    : typeTags[type].some((tag) => i.tags?.includes(tag)));
   const list = data.filter((i) => {
     if (terms.some((t) => t.test(i.name) === t.exclude)) return false;
-    if (!selectedTypes.length) return true;
-    return selectedTypes.some((type) => {
-      if (type === 'other') return !i.tags?.some((tag) => categorizedTags.has(tag));
-      return typeTags[type].some((tag) => i.tags?.includes(tag));
-    });
+    if (excluded.some((type) => matchesType(i, type))) return false;
+    return !included.length || included.some((type) => matchesType(i, type));
   });
   // Items without a value always sort last.
   list.sort((a, b) => {
@@ -116,5 +118,9 @@ async function load() {
 }
 
 search.addEventListener('input', render);
-typeFilters.forEach((filter) => filter.addEventListener('change', render));
+const nextTypeState = { off: 'include', include: 'exclude', exclude: 'off' };
+typeFilters.forEach((button) => button.addEventListener('click', () => {
+  button.dataset.state = nextTypeState[button.dataset.state];
+  render();
+}));
 load();
