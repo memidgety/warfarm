@@ -95,6 +95,17 @@ async function loadDetail() {
   if (!d) { document.getElementById('name').textContent = 'Item not found'; return; }
   document.title = `${d.item.name} - WarFarmer`;
   document.getElementById('name').textContent = d.item.name;
+  if (d.wikiLink) {
+    const wikiLink = document.createElement('a');
+    wikiLink.href = d.wikiLink;
+    wikiLink.target = '_blank';
+    wikiLink.rel = 'noopener noreferrer';
+    wikiLink.className = 'wiki-button';
+    wikiLink.textContent = 'Wiki Link';
+    const wikiContainer = document.getElementById('wiki-link');
+    wikiContainer.appendChild(wikiLink);
+    wikiContainer.hidden = false;
+  }
   const meta = document.getElementById('meta');
   const parts = [d.rarity && `Rarity: ${d.rarity}`, d.maxRank != null && `Max rank: ${d.maxRank}`,
     d.ducats != null && `Ducats: ${d.ducats}`, d.description].filter(Boolean);

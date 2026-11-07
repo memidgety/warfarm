@@ -553,7 +553,7 @@ function itemRows() {
   return rows;
 }
 
-const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.ico': 'image/x-icon' };
+const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.ico': 'image/x-icon', '.ttf': 'font/ttf' };
 const json = (res, code, body) => {
   res.writeHead(code, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(body));
