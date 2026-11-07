@@ -132,3 +132,39 @@ test('adds relic pools to the reward table without changing relic cache shape', 
   assert.deepEqual(relic.nodes.map((node) => node.name), ['Lith A1 Relic (Intact)']);
   assert.deepEqual(relic.nodes[0].rewards.A.map((reward) => reward.name), ['Relic Mod']);
 });
+
+test('Nightmare Mode rotations have separate payout-sorted tables with an unchanged mean', () => {
+  const items = ['A', 'B', 'C'].map((letter) => ({ name: `Mod ${letter}`, slug: `mod_${letter}` }));
+  const stats = Object.fromEntries(items.map((item, index) => [
+    item.slug, { buckets: [{ volume: 1, avg: [4, 12, 8][index] }] },
+  ]));
+  const entries = [{
+    name: 'Nightmare Mode Rewards',
+    category: 'Dynamic locations',
+    type: 'Nightmare Mode Rewards',
+    rotations: { A: [['Mod A', 100]], B: [['Mod B', 100]], C: [['Mod C', 100]] },
+  }, {
+    name: 'Nightmare Granum Void',
+    category: 'Dynamic locations',
+    type: 'Nightmare Granum Void',
+    rotations: { A: [['Mod A', 100]], B: [['Mod B', 100]], C: [['Mod C', 100]] },
+  }];
+  app.useCache({ items, stats, drops: { entries, relics: {} } });
+
+  const types = app.missionTypeTable();
+  const nightmare = types.find((entry) => entry.type === 'Nightmare Mode Rewards');
+  assert.equal(nightmare.avg, 8);
+  assert.deepEqual(nightmare.nodes.map((node) => [node.name, node.payout]), [
+    ['Rotation B', 12], ['Rotation C', 8], ['Rotation A', 4],
+  ]);
+  for (const node of nightmare.nodes) {
+    const letter = node.name.slice(-1);
+    assert.deepEqual(Object.keys(node.rewards), [letter]);
+    assert.deepEqual(node.rewards[letter].map((reward) => reward.name), [`Mod ${letter}`]);
+    assert.deepEqual(node.weights, { [letter]: 1 });
+    assert.equal(node.basis, 'Single reward');
+  }
+  const granum = types.find((entry) => entry.type === 'Nightmare Granum Void');
+  assert.equal(granum.nodes.length, 1);
+  assert.deepEqual(Object.keys(granum.nodes[0].rewards), ['A', 'B', 'C']);
+});

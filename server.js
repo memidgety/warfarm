@@ -413,7 +413,8 @@ function missionTypeTable() {
         for (const r of rows) r.unique = pools.get(r.name).size === 1;
       }
     }
-    if (ROTATION_TABLE_CATEGORIES.includes(e.category) && letters.length > 1
+    const nightmare = e.category === 'Dynamic locations' && e.type === 'Nightmare Mode Rewards';
+    if ((ROTATION_TABLE_CATEGORIES.includes(e.category) || nightmare) && letters.length > 1
       && Object.keys(rewards).every((k) => /^[ABC]( - |$)/.test(k))) {
       // Each A/B/C rotation gets its own table; its stages are all rolled once.
       for (const letter of letters) {
@@ -430,7 +431,7 @@ function missionTypeTable() {
         addNode(e.category, e.type, {
           name: `Rotation ${letter}`, rotationEv: nodeEv, rewards: nodeRewards, weights,
           payout: Object.values(nodeEv).reduce((a, v) => a + v, 0),
-          basis: 'Sum of stages',
+          basis: nightmare ? 'Single reward' : 'Sum of stages',
         });
       }
       continue;
@@ -610,6 +611,7 @@ if (require.main === module) {
 module.exports = {
   useCache,
   crawl,
+  wfm,
   refreshDrops,
   parseDropPage,
   parseRelics,

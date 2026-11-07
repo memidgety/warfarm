@@ -9,6 +9,7 @@ process.env.CACHE_FILE = process.env.CACHE_FILE || path.join(os.tmpdir(), 'warfa
 const { GetObjectCommand, PutObjectCommand, S3Client } = require('@aws-sdk/client-s3');
 const { CloudFrontClient, CreateInvalidationCommand } = require('@aws-sdk/client-cloudfront');
 const app = require('../server');
+const { refreshWikiLinks, addWikiLinks } = require('./wiki-links');
 
 const bucket = process.env.CACHE_BUCKET;
 const distribution = process.env.CLOUDFRONT_DISTRIBUTION_ID;
@@ -23,9 +24,9 @@ async function readExisting() {
     const body = Buffer.from(await res.Body.transformToByteArray());
     const text = res.ContentEncoding === 'gzip' ? zlib.gunzipSync(body).toString() : body.toString();
     const cache = JSON.parse(text);
-    return { items: cache.items || [], stats: cache.stats || {}, drops: cache.drops || {} };
+    return { items: cache.items || [], stats: cache.stats || {}, drops: cache.drops || {}, wikiLinks: cache.wikiLinks || {} };
   } catch (error) {
-    if (error.name === 'NoSuchKey') return { items: [], stats: {}, drops: {} };
+    if (error.name === 'NoSuchKey') return { items: [], stats: {}, drops: {}, wikiLinks: {} };
     throw error;
   }
 }
@@ -43,19 +44,21 @@ async function put(key, value) {
 }
 
 async function main() {
-  app.useCache(await readExisting());
+  const existing = await readExisting();
+  app.useCache(existing);
   // Manual workflow runs always re-fetch the drop tables instead of reusing the 24h cache.
   await app.refreshDrops(process.env.FORCE_DROPS_REFRESH === 'true');
   await app.crawl();
 
   const cache = app.getCache();
   if (!cache.items.length) throw new Error('crawl produced no items; not publishing');
+  const wikiLinks = await refreshWikiLinks(cache.items, existing.wikiLinks, app.wfm);
   const rows = app.itemRows();
   const updatedAt = new Date().toISOString();
 
-  await put('cache.json', cache);
+  await put('cache.json', { ...cache, wikiLinks });
   await put('items.json', { updatedAt, totalItems: cache.items.length, items: rows });
-  await put('details.json', app.itemDetails());
+  await put('details.json', addWikiLinks(app.itemDetails(), wikiLinks));
   await put('missions.json', {
     updatedAt,
     missions: app.missionPayouts(),

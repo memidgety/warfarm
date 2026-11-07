@@ -40,5 +40,11 @@ CloudFront serves them at https://d12aw56padv05r.cloudfront.net with CORS
 enabled. Add `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` (the
 `warfarmer-cache-writer` IAM user) as GitHub Actions secrets.
 
+The publisher fetches item wiki links from Warframe Market and includes them
+in `details.json`. Links are cached in `cache.json` and refreshed after 30
+days; failed lookups are logged and retried on the next publish. The first
+publish after enabling this takes longer because it fetches each item once at
+the market API's rate limit.
+
 `.github/workflows/pages.yml` publishes `public/` to GitHub Pages, pointing it
 at the CloudFront data.
