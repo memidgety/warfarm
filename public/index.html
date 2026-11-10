@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>WarFarmer - Market Volume</title>
 <link rel="stylesheet" href="style.css">
 <link rel="icon" href="favicon.ico" sizes="any">
@@ -29,7 +30,7 @@
 </fieldset>
 <table>
   <thead><tr>
-    <th>#</th><th>Item</th>
+    <th>#</th><th>Item</th><th><span class="visually-hidden">Add to cart</span></th>
     <th class="num sortable" data-sort="volume">Volume (24h)</th>
     <th class="num sortable" data-sort="avg">Avg price (p, lowest rank)</th>
     <th class="num sortable" data-sort="maxAvg">Avg price (p, max rank)</th>
@@ -38,6 +39,7 @@
   <tbody id="rows"></tbody>
 </table>
 <script src="config.js"></script>
+<script src="shopping-cart.js"></script>
 <script src="index.js"></script>
 </body>
 </html>

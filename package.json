@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "node --check server.js && node --check scripts/publish-cache.js && node --check scripts/wiki-links.js && node --check public/index.js && node --check public/item.js && node --check public/missions.js",
+    "build": "node --check server.js && node --check scripts/publish-cache.js && node --check scripts/wiki-links.js && node --check public/index.js && node --check public/item.js && node --check public/missions.js && node --check public/shopping-cart.js",
     "start": "node server.js"
   },
   "engines": {

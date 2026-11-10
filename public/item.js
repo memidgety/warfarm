@@ -95,6 +95,9 @@ async function loadDetail() {
   if (!d) { document.getElementById('name').textContent = 'Item not found'; return; }
   document.title = `${d.item.name} - WarFarmer`;
   document.getElementById('name').textContent = d.item.name;
+  const addButton = document.getElementById('add-to-cart');
+  addButton.hidden = false;
+  addButton.addEventListener('click', () => window.shoppingCart.add(d.item, d));
   if (d.wikiLink) {
     const wikiLink = document.createElement('a');
     wikiLink.href = d.wikiLink;

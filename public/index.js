@@ -87,11 +87,22 @@ function render() {
     const maxAvg = i.maxRank ? `${fmt(i.maxRank.avg)} <small>(R${i.maxRank.rank})</small>` : '-';
     tr.innerHTML = `<td>${n + 1}</td>
       <td><span class="item-icon-preview"><img class="item-icon" src="${IMG}${i.thumb}" alt=""></span><a></a></td>
+      <td><button class="add-to-cart" type="button">Add</button></td>
       <td class="num">${i.volume}</td><td class="num">${fmt(i.avg)}</td><td class="num">${maxAvg}</td>
       <td class="num">${fmt(i.rating)}</td>`;
     const a = tr.querySelector('a');
     a.textContent = i.name;
     a.href = `item.html?slug=${encodeURIComponent(i.slug)}`;
+    const addButton = tr.querySelector('.add-to-cart');
+    addButton.setAttribute('aria-label', `Add ${i.name} to cart`);
+    addButton.addEventListener('click', async () => {
+      addButton.disabled = true;
+      try {
+        await window.shoppingCart.add(i);
+      } finally {
+        addButton.disabled = false;
+      }
+    });
     rows.appendChild(tr);
   });
   updateHeaders();

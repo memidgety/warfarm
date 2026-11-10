@@ -53,3 +53,29 @@ input[type="checkbox"] { width: auto; padding: 0; margin: 0 4px 0 0; vertical-al
 .type-options .type-btn[data-state="exclude"]:hover { background: rgb(172 52 52); }
 .type-options .type-btn:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
 .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.shopping-cart { position: fixed; bottom: 0; left: 1rem; z-index: 20; width: min(570px, calc(100vw - 2rem)); filter: drop-shadow(0 0 8px #000a); }
+.cart-toggle { display: flex; align-items: center; gap: 8px; padding: 9px 12px; color: #fff; background: #2873c5; border: 0; border-radius: 6px 6px 0 0; cursor: pointer; }
+.cart-toggle:hover { background: #3488df; }
+.cart-toggle svg, .cart-remove svg { width: 20px; height: 20px; }
+.cart-count { background: #1d2026; border-radius: 1em; padding: 1px 7px; }
+.cart-chevron { margin-left: 4px; }
+.cart-drawer { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.2s ease; background: #1d2026; border: 1px solid #444; border-bottom: 0; }
+.shopping-cart.is-open .cart-drawer { grid-template-rows: 1fr; }
+.cart-drawer-inner { min-height: 0; overflow: hidden; }
+.shopping-cart.is-open .cart-drawer-inner { padding: 10px; }
+.cart-notice { color: #ffd18a; margin: 0 0 8px; }
+.cart-empty { margin: 4px 0 12px; }
+.cart-scroll { overflow: auto; max-height: min(45vh, 360px); }
+.cart-scroll[hidden], .cart-empty[hidden], .cart-notice[hidden] { display: none; }
+.cart-table { margin-bottom: 8px; font-size: 0.9rem; }
+.cart-table th, .cart-table td { padding: 6px; }
+.cart-table th { z-index: 1; }
+.cart-obtained td, .cart-obtained td a { text-decoration: line-through; color: #8a8f98; }
+.cart-icon-popup { z-index: 21; margin: 0; max-width: min(512px, 100vw); max-height: min(512px, 100vh); }
+.cart-remove { display: inline-flex; padding: 4px; color: #ddd; background: transparent; border: 0; cursor: pointer; }
+.cart-remove:hover { color: #ff7777; }
+.cart-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.cart-clear, .add-to-cart, #add-to-cart { padding: 5px 8px; cursor: pointer; }
+.cart-clear:disabled { cursor: default; }
+@media (prefers-reduced-motion: reduce) { .cart-drawer { transition: none; } }

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>WarFarmer - Item</title>
 <link rel="stylesheet" href="style.css">
 <link rel="icon" href="favicon.ico" sizes="any">
@@ -9,6 +10,7 @@
 <body>
 <p><a href="index.html">&larr; Back to list</a></p>
 <h1 id="name">Loading...</h1>
+<button id="add-to-cart" type="button" hidden>Add to cart</button>
 <p id="wiki-link" hidden></p>
 <div id="meta"></div>
 <div class="cols">
@@ -28,6 +30,7 @@
 <h2>Hourly trade history (48h)</h2>
 <table><thead><tr><th>Hour (UTC)</th><th class="num">Rank</th><th class="num">Volume</th><th class="num">Avg</th><th class="num">Min</th><th class="num">Max</th></tr></thead><tbody id="hist"></tbody></table>
 <script src="config.js"></script>
+<script src="shopping-cart.js"></script>
 <script src="item.js"></script>
 </body>
 </html>

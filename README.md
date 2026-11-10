@@ -17,6 +17,27 @@ npm start
 
 Open `http://localhost:3000`.
 
+## Shopping cart
+
+Add items from the market list or an item page. The cart is available on every
+page; use its bottom-left button to expand or collapse it. Add the same item
+again to increase its quantity. Prices are snapshots of the 24-hour average at
+the time of adding, rounded up per item; mods use rank 0. Checkboxes control
+which items are included in the total, and unpriced items are identified rather
+than counted as zero. Click a price to open its market listing, or use the wiki
+link when available. Hover over an item name to preview its icon. Mark an item
+as obtained to strike it through and exclude it from the total; unmark it to
+restore its previous include setting. Remove individual items or clear the cart.
+
+The cart and its expanded state are stored in browser `localStorage`, not the
+server cache or an account. They survive refreshes but are local to the browser
+and site origin. If local storage is unavailable, the cart falls back to
+`sessionStorage` (limited to the current tab) or temporary memory and displays
+a warning.
+
+The cart icon is from [Feather Icons](https://feathericons.com/), used under
+its [MIT license](public/feather-icons-LICENSE.txt).
+
 ## Deploy with GitHub and Render
 
 1. Push this project to a GitHub repository.
