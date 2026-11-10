@@ -96,6 +96,7 @@ async function loadDetail() {
   document.title = `${d.item.name} - WarFarmer`;
   document.getElementById('name').textContent = d.item.name;
   const addButton = document.getElementById('add-to-cart');
+  addButton.appendChild(window.shoppingCart.createIcon());
   addButton.hidden = false;
   addButton.addEventListener('click', () => window.shoppingCart.add(d.item, d));
   if (d.wikiLink) {
