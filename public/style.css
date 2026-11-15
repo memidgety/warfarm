@@ -52,6 +52,9 @@ input[type="checkbox"] { width: auto; padding: 0; margin: 0 4px 0 0; vertical-al
 .type-options .type-btn[data-state="exclude"] { background: rgb(190 60 60); }
 .type-options .type-btn[data-state="exclude"]:hover { background: rgb(172 52 52); }
 .type-options .type-btn:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+.wiki-cell { white-space: nowrap; font-size: 0.8rem; }
+.wiki-hover { visibility: hidden; }
+#rows tr:hover .wiki-hover, #rows tr:focus-within .wiki-hover { visibility: visible; }
 .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .shopping-cart { position: fixed; bottom: 12px; left: 1rem; z-index: 20; width: min(570px, calc(100vw - 2rem)); filter: drop-shadow(0 0 8px #000a); clip-path: inset(-4px calc(100% - 52px) -4px -4px round 28px); transition: bottom 0.45s cubic-bezier(.22, 1, .36, 1), clip-path 0.45s cubic-bezier(.22, 1, .36, 1); }
