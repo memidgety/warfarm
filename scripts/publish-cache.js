@@ -53,7 +53,7 @@ async function main() {
   const cache = app.getCache();
   if (!cache.items.length) throw new Error('crawl produced no items; not publishing');
   const wikiLinks = await refreshWikiLinks(cache.items, existing.wikiLinks, app.wfm);
-  const rows = app.itemRows();
+  const rows = app.itemRows(wikiLinks);
   const updatedAt = new Date().toISOString();
 
   await put('cache.json', { ...cache, wikiLinks });

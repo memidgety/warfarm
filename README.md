@@ -62,10 +62,14 @@ enabled. Add `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` (the
 `warfarmer-cache-writer` IAM user) as GitHub Actions secrets.
 
 The publisher fetches item wiki links from Warframe Market and includes them
-in `details.json`. Links are cached in `cache.json` and refreshed after 30
-days; failed lookups are logged and retried on the next publish. The first
+in `items.json` and `details.json`. Links are cached in `cache.json` and
+refreshed after 30 days; failed lookups are logged and retried on the next
+publish. The first
 publish after enabling this takes longer because it fetches each item once at
-the market API's rate limit.
+the market API's rate limit. The server uses links from its local or seeded
+cache and refreshes missing or stale links in the background. Until a link is
+cached, the market list shows it as unavailable; hovering does not fetch item
+details. Refresh the page to see newly cached links.
 
 `.github/workflows/pages.yml` publishes `public/` to GitHub Pages, pointing it
 at the CloudFront data.

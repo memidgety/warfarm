@@ -3,6 +3,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { refreshWikiLinks } = require('./scripts/wiki-links');
 
 const PORT = process.env.PORT || 3000;
 const API = 'https://api.warframe.market';
@@ -23,6 +24,7 @@ const DROPS_REFRESH_MS = 24 * 60 * 60 * 1000;
 let items = []; // {slug,name,thumb,tags,rarity}
 let stats = {}; // slug -> {fetchedAt, buckets:[{t,volume,avg,min,max,rank}]}
 let drops = {}; // {fetchedAt, entries:[{name,type,category,rotations:{A:[[item,chance]]}}]}
+let wikiLinks = {}; // slug -> {wikiLink, fetchedAt}
 
 function readLocalCache() {
   try {
@@ -37,15 +39,18 @@ function useCache(cache) {
   items = cache.items;
   stats = cache.stats;
   drops = cache.drops;
+  wikiLinks = cache.wikiLinks || {};
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-let lastReq = 0;
+let nextReq = 0;
 async function wfm(url) {
   for (let attempt = 0; attempt < 4; attempt++) {
-    const wait = lastReq + REQ_INTERVAL_MS - Date.now();
+    const now = Date.now();
+    const scheduled = Math.max(now, nextReq);
+    nextReq = scheduled + REQ_INTERVAL_MS;
+    const wait = scheduled - now;
     if (wait > 0) await sleep(wait);
-    lastReq = Date.now();
     const res = await fetch(API + url, { headers: HEADERS });
     if (res.status === 429) { await sleep(2000 * (attempt + 1)); continue; }
     if (res.status === 404) return null;
@@ -57,7 +62,11 @@ async function wfm(url) {
 
 async function save() {
   fs.mkdirSync(path.dirname(CACHE_FILE), { recursive: true });
-  fs.writeFileSync(CACHE_FILE, JSON.stringify({ items, stats, drops }));
+  fs.writeFileSync(CACHE_FILE, JSON.stringify(getCache()));
+}
+
+function getCache() {
+  return { items, stats, drops, wikiLinks };
 }
 
 const DEFAULT_CACHE_URL = 'https://d12aw56padv05r.cloudfront.net/cache.json';
@@ -75,9 +84,13 @@ async function seedCache(cache) {
       items: remote.items?.length ? remote.items : cache.items,
       stats: { ...(remote.stats || {}) },
       drops: (remote.drops?.fetchedAt || 0) >= (cache.drops?.fetchedAt || 0) ? (remote.drops || {}) : cache.drops,
+      wikiLinks: { ...(remote.wikiLinks || {}) },
     };
     for (const [slug, s] of Object.entries(cache.stats || {})) {
       if (!merged.stats[slug] || s.fetchedAt > merged.stats[slug].fetchedAt) merged.stats[slug] = s;
+    }
+    for (const [slug, link] of Object.entries(cache.wikiLinks || {})) {
+      if (!merged.wikiLinks[slug] || link.fetchedAt > merged.wikiLinks[slug].fetchedAt) merged.wikiLinks[slug] = link;
     }
     console.log(`loaded AWS cache: ${Object.keys(remote.stats || {}).length} items`);
     return merged;
@@ -260,11 +273,33 @@ async function refreshItem(slug) {
 
 let crawling = false;
 let progress = { done: 0, total: 0 };
-async function crawl() {
+let wikiRefreshPromise = null;
+function refreshWikiCache() {
+  if (wikiRefreshPromise) return wikiRefreshPromise;
+  wikiRefreshPromise = (async () => {
+    let updated = 0;
+    try {
+      await refreshWikiLinks(items, wikiLinks, wfm, async (slug, entry) => {
+        wikiLinks[slug] = entry;
+        updated++;
+        if (updated % 50 === 0) await save();
+      });
+      if (updated) await save();
+    } finally {
+      wikiRefreshPromise = null;
+    }
+  })();
+  return wikiRefreshPromise;
+}
+
+async function crawl({ refreshWiki = false } = {}) {
   if (crawling) return;
   crawling = true;
   try {
     if (!items.length || !items[0].icon) await loadItems();
+    if (refreshWiki) {
+      refreshWikiCache().catch((error) => console.error('wiki refresh failed:', error.message));
+    }
     // Stalest first; never-fetched items go first.
     const queue = items
       .map((i) => i.slug)
@@ -546,9 +581,9 @@ async function itemDetail(slug) {
   };
 }
 
-function itemRows() {
+function itemRows(links = wikiLinks) {
   const rows = items
-    .map((i) => ({ ...i, ...(summarize(i.slug, i.tags) || { volume: null, avg: null }) }))
+    .map((i) => ({ ...i, ...(summarize(i.slug, i.tags) || { volume: null, avg: null }), wikiLink: links[i.slug]?.wikiLink ?? null }))
     .filter((r) => r.volume !== null);
   rows.sort((a, b) => b.volume - a.volume);
   return rows;
@@ -593,8 +628,8 @@ async function start() {
   useCache(await seedCache(readLocalCache()));
   await save();
   server.listen(PORT, () => console.log(`http://localhost:${PORT}`));
-  crawl();
-  setInterval(crawl, 15 * 60 * 1000);
+  crawl({ refreshWiki: true });
+  setInterval(() => crawl({ refreshWiki: true }), 15 * 60 * 1000);
   refreshDrops();
   setInterval(refreshDrops, 60 * 60 * 1000);
 }
@@ -610,7 +645,9 @@ if (require.main === module) {
 
 module.exports = {
   useCache,
+  seedCache,
   crawl,
+  refreshWikiCache,
   wfm,
   refreshDrops,
   parseDropPage,
@@ -619,5 +656,5 @@ module.exports = {
   itemDetails,
   missionTypeTable,
   missionPayouts,
-  getCache: () => ({ items, stats, drops }),
+  getCache,
 };

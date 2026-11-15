@@ -16,54 +16,6 @@ const typeTags = {
   cosmetic: ['scene', 'skin', 'emote', 'simulacrum', 'glyph'],
 };
 const categorizedTags = new Set(Object.values(typeTags).flat());
-const wikiLinks = new Map();
-let staticDetails;
-
-async function loadWikiLink(slug) {
-  if (!wikiLinks.has(slug)) {
-    const request = (async () => {
-      const base = window.WARFARMER_DATA;
-      if (base && !staticDetails) {
-        staticDetails = fetch(`${base}/details.json`).then((response) => {
-          if (!response.ok) throw new Error(`Item details request failed (${response.status})`);
-          return response.json();
-        }).catch((error) => { staticDetails = null; throw error; });
-      }
-      let detail;
-      if (base) detail = (await staticDetails)[slug];
-      else {
-        const response = await fetch(`/api/item/${encodeURIComponent(slug)}`);
-        if (!response.ok) throw new Error(`Item details request failed (${response.status})`);
-        detail = await response.json();
-      }
-      if (!detail) throw new Error('Item details not found');
-      if (!detail.wikiLink) return null;
-      const url = new URL(detail.wikiLink);
-      if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error('Invalid wiki URL');
-      return url.href;
-    })().catch((error) => {
-      wikiLinks.delete(slug);
-      throw error;
-    });
-    wikiLinks.set(slug, request);
-  }
-  return wikiLinks.get(slug);
-}
-
-async function openPendingWiki(slug) {
-  const tab = window.open('about:blank', '_blank');
-  if (!tab) throw new Error('Pop-up blocked. Allow pop-ups to open the wiki.');
-  tab.opener = null;
-  try {
-    const url = await loadWikiLink(slug);
-    if (!url) throw new Error('No wiki link is available for this item.');
-    if (!tab.closed) tab.location.href = url;
-  } catch (error) {
-    if (!tab.closed) tab.close();
-    throw error;
-  }
-}
-
 let sortKey = 'volume';
 let sortDir = -1; // -1 descending, 1 ascending
 
@@ -142,50 +94,22 @@ function render() {
     a.textContent = i.name;
     a.href = `item.html?slug=${encodeURIComponent(i.slug)}`;
     const wiki = tr.querySelector('.wiki-hover');
-    const link = document.createElement('a');
-    link.href = '#';
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.textContent = 'Wiki';
-    link.setAttribute('aria-label', `${i.name} wiki`);
-    wiki.appendChild(link);
-    const wikiStatus = document.createElement('span');
-    wikiStatus.setAttribute('role', 'status');
-    wiki.appendChild(wikiStatus);
-    let wikiUrl = null;
-    let loadingWiki = false;
-    let wikiLoaded = false;
-    const showWiki = async () => {
-      if (loadingWiki || wikiLoaded) return;
-      loadingWiki = true;
-      wikiStatus.textContent = '';
+    if (i.wikiLink) {
       try {
-        const url = await loadWikiLink(i.slug);
-        if (url) {
-          wikiUrl = url;
-          link.href = url;
-        } else wikiStatus.textContent = ' (unavailable)';
-        wikiLoaded = true;
+        const url = new URL(i.wikiLink);
+        if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error('Invalid wiki URL');
+        const link = document.createElement('a');
+        link.href = url.href;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'Wiki';
+        link.setAttribute('aria-label', `${i.name} wiki`);
+        wiki.appendChild(link);
       } catch (error) {
-        console.error(`Could not load wiki link for ${i.name}:`, error);
-        wikiStatus.textContent = ' (unavailable)';
-        wiki.title = 'Could not load the wiki link. Leave and return to retry.';
-      } finally {
-        loadingWiki = false;
+        console.error(`Invalid wiki link for ${i.name}:`, error);
+        wiki.textContent = 'Wiki unavailable';
       }
-    };
-    link.addEventListener('click', async (event) => {
-      if (wikiUrl) return;
-      event.preventDefault();
-      try {
-        await openPendingWiki(i.slug);
-      } catch (error) {
-        console.error(`Could not open wiki for ${i.name}:`, error);
-        wikiStatus.textContent = ` (${error.message})`;
-      }
-    });
-    tr.addEventListener('mouseenter', showWiki);
-    tr.addEventListener('focusin', showWiki);
+    } else wiki.textContent = 'Wiki unavailable';
     const addButton = tr.querySelector('.add-to-cart');
     addButton.appendChild(window.shoppingCart.createIcon());
     addButton.setAttribute('aria-label', `Add ${i.name} to cart`);

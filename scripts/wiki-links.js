@@ -1,6 +1,6 @@
 const WIKI_REFRESH_MS = 30 * 24 * 60 * 60 * 1000;
 
-async function refreshWikiLinks(items, existing, fetchItem) {
+async function refreshWikiLinks(items, existing, fetchItem, onUpdate = () => {}) {
   const links = { ...existing };
   const now = Date.now();
   const pending = items.filter(({ slug }) => !links[slug] || !Number.isFinite(links[slug].fetchedAt)
@@ -15,6 +15,7 @@ async function refreshWikiLinks(items, existing, fetchItem) {
         throw new Error('invalid item details response');
       }
       links[slug] = { wikiLink: english.wikiLink || null, fetchedAt: Date.now() };
+      await onUpdate(slug, links[slug]);
     } catch (error) {
       failures++;
       console.error(`wiki link refresh failed for ${slug}: ${error.message}`);
